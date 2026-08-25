@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portal de Artesanos | Programa Escolar</title>
+  <meta name="robots" content="noindex" />
+  <link rel="stylesheet" href="/portal.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <!-- LOGIN -->
+  <div id="loginView" class="auth-view">
+    <form class="auth-card" id="loginForm">
+      <h2>🧶 Portal de Artesanos</h2>
+      <p style="text-align:center;color:#555;font-size:0.9rem;">Acceso exclusivo para artesanos del programa</p>
+      <input type="text" id="username" placeholder="Usuario" required />
+      <input type="password" id="password" placeholder="Contraseña" required />
+      <button class="btn btn-primary" type="submit">Entrar al Portal</button>
+      <a href="index.html" class="back">← Volver al sitio</a>
+    </form>
+  </div>
+
+  <!-- PORTAL -->
+  <div id="portalView" class="portal-view hidden">
+    <nav class="pnav">
+      <div class="brand">🧶 Portal Artesanos</div>
+      <div>
+        <button class="theme-toggle" id="themeToggle">🌙</button>
+        <button class="btn btn-danger btn-sm" id="logoutBtn">Salir</button>
+      </div>
+    </nav>
+
+    <main class="pcontainer">
+      <!-- Próxima feria -->
+      <section class="pcard" id="fairCard">
+        <h2>🎪 Próxima Feria de Artesanías</h2>
+        <div id="fairContent"><p>Cargando…</p></div>
+      </section>
+
+      <div class="pgrid">
+        <!-- Avisos -->
+        <section class="pcard">
+          <h2>📢 Avisos Importantes</h2>
+          <div id="notices"><p>Cargando…</p></div>
+        </section>
+
+        <!-- Documentos -->
+        <section class="pcard">
+          <h2>📄 Documentos</h2>
+          <ul id="documents" class="doc-list"><li>Cargando…</li></ul>
+        </section>
+      </div>
+
+      <!-- Mapa -->
+      <section class="pcard">
+        <h2>🗺️ Ubicación</h2>
+        <div id="map" class="map-frame">Cargando mapa…</div>
+      </section>
+
+      <!-- Calendario -->
+      <section class="pcard">
+        <h2>📅 Calendario de Actividades</h2>
+        <div id="calendar" class="cal-grid">Cargando…</div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast-container"></div>
+  <script src="/portal.js"></script>
+</body>
+</html>
