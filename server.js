@@ -9,6 +9,24 @@ const { bcrypt, signToken, authenticate, requireAdmin, requireArtisan } = requir
 const app = express();
 
 // ============================================================
+//  Captura de errores en handlers async
+//  Envuelve automáticamente cada ruta para que un fallo (por ej.
+//  la base de datos inaccesible) devuelva un error JSON en lugar de
+//  dejar la petición "colgada" o tumbar el servidor.
+// ============================================================
+['get', 'post', 'put', 'delete', 'patch'].forEach((method) => {
+  const original = app[method].bind(app);
+  app[method] = (routePath, ...handlers) => {
+    const wrapped = handlers.map((h) =>
+      typeof h === 'function'
+        ? (req, res, next) => Promise.resolve(h(req, res, next)).catch(next)
+        : h
+    );
+    return original(routePath, ...wrapped);
+  };
+});
+
+// ============================================================
 //  Middlewares globales
 // ============================================================
 app.use(cors());
@@ -97,6 +115,15 @@ app.get('/api/program-info', async (req, res) => {
   res.json(result.rows);
 });
 
+app.post('/api/program-info', authenticate, requireAdmin, async (req, res) => {
+  const { section, title, content } = req.body;
+  const result = await pool.query(
+    'INSERT INTO program_info (section, title, content) VALUES ($1,$2,$3) RETURNING *',
+    [section, title, content]
+  );
+  res.json(result.rows[0]);
+});
+
 app.put('/api/program-info/:id', authenticate, requireAdmin, async (req, res) => {
   const { title, content } = req.body;
   const result = await pool.query(
@@ -104,6 +131,11 @@ app.put('/api/program-info/:id', authenticate, requireAdmin, async (req, res) =>
     [title, content, req.params.id]
   );
   res.json(result.rows[0]);
+});
+
+app.delete('/api/program-info/:id', authenticate, requireAdmin, async (req, res) => {
+  await pool.query('DELETE FROM program_info WHERE id=$1', [req.params.id]);
+  res.json({ ok: true });
 });
 
 // ============================================================
@@ -322,6 +354,17 @@ app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin.html'))
 app.get('/admin.html', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
 app.get('/portal', (req, res) => res.sendFile(path.join(__dirname, 'portal.html')));
 app.get('/portal.html', (req, res) => res.sendFile(path.join(__dirname, 'portal.html')));
+
+// ============================================================
+//  Manejador global de errores
+//  Cualquier error no capturado (incluidos los de BD) llega aquí y
+//  responde con JSON en vez de dejar la petición sin respuesta.
+// ============================================================
+app.use((err, req, res, next) => {
+  console.error('❌ Error en la petición:', err && err.message);
+  if (res.headersSent) return next(err);
+  res.status(500).json({ error: 'Error del servidor (revisa la conexión a la base de datos)' });
+});
 
 // ============================================================
 //  Arranque del servidor

@@ -20,16 +20,21 @@ function toast(msg, type = 'info') {
 // ---------- Auth ----------
 $('#loginForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const res = await API('/api/login', {
-    method: 'POST',
-    body: JSON.stringify({ username: $('#username').value, password: $('#password').value }),
-  });
-  if (res.token && res.role === 'admin') {
-    token = res.token;
-    localStorage.setItem('adminToken', token);
-    showPanel();
-  } else {
-    toast(res.error || 'Acceso denegado', 'error');
+  try {
+    const res = await API('/api/login', {
+      method: 'POST',
+      body: JSON.stringify({ username: $('#username').value, password: $('#password').value }),
+    });
+    if (res.token && res.role === 'admin') {
+      token = res.token;
+      localStorage.setItem('adminToken', token);
+      showPanel();
+    } else {
+      toast(res.error || 'Acceso denegado', 'error');
+    }
+  } catch (err) {
+    console.error('Error en login:', err);
+    toast('No se pudo conectar con el servidor / base de datos.', 'error');
   }
 });
 
@@ -70,7 +75,7 @@ function selectTab(name) {
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
   $('#tabTitle').textContent = TABS[name].title;
   // Solo algunas pestañas permiten "agregar"
-  const addable = ['announcements', 'requirements', 'artisans', 'alumni', 'gallery', 'notices', 'documents', 'activities'];
+  const addable = ['announcements', 'programInfo', 'requirements', 'artisans', 'alumni', 'gallery', 'notices', 'documents', 'activities'];
   $('#addBtn').style.display = addable.includes(name) ? 'inline-block' : 'none';
   $('#addBtn').onclick = () => openAdd(name);
   TABS[name].render();
@@ -127,6 +132,12 @@ window.openAdd = function (tab) {
     <label><input type="checkbox" id="f_urgent" /> Urgente</label>
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeM()">Cancelar</button>
     <button class="btn btn-primary" onclick="addAnnouncement()">Crear</button></div>`);
+  if (tab === 'programInfo') openModal(`<h3>Nueva Información del Programa</h3>
+    <label>Sección</label><select id="f_section"><option value="history">Historia</option><option value="objectives">Objetivos</option><option value="benefits">Beneficios</option><option value="activities">Actividades</option></select>
+    <label>Título</label><input id="f_title" />
+    <label>Contenido</label><textarea id="f_content"></textarea>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeM()">Cancelar</button>
+    <button class="btn btn-primary" onclick="addProgramInfo()">Crear</button></div>`);
   if (tab === 'requirements') openModal(`<h3>Nuevo Requisito</h3>
     <label>Categoría</label><select id="f_cat"><option value="documents">Documentos</option><option value="criteria">Criterios</option><option value="dates">Fechas</option></select>
     <label>Título</label><input id="f_title" />
@@ -185,6 +196,7 @@ window.addAnnouncement = async () => {
   await API('/api/announcements', { ...authHeader(), method: 'POST', body: JSON.stringify({ title: $('#f_title').value, body: $('#f_body').value, published_at: $('#f_date').value, is_urgent: $('#f_urgent').checked }) });
   closeM(); toast('Anuncio creado', 'success'); renderAnnouncements();
 };
+window.addProgramInfo = () => post('/api/program-info', { section: $('#f_section').value, title: $('#f_title').value, content: $('#f_content').value }, renderProgramInfo);
 window.addRequirement = () => post('/api/requirements', { category: $('#f_cat').value, title: $('#f_title').value, description: $('#f_desc').value, sort_order: +$('#f_order').value }, renderRequirements);
 window.addArtisan = async () => {
   await postForm('/api/artisans', [['name', $('#f_name').value], ['specialty', $('#f_spec').value], ['description', $('#f_desc').value], ['photo', $('#f_photo').value || '']], '#f_file');
@@ -213,8 +225,11 @@ async function renderProgramInfo() {
   $('#panel').innerHTML = data.map((i) => `
     <div class="list-item">
       <div><h4>${esc(i.title)} <small>(${i.section})</small></h4><p>${esc(i.content).slice(0,90)}…</p></div>
-      <div class="list-actions"><button class="btn btn-gold btn-sm" onclick="editInfo(${i.id})">Editar</button></div>
-    </div>`).join('');
+      <div class="list-actions">
+        <button class="btn btn-gold btn-sm" onclick="editInfo(${i.id})">Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="del('/api/program-info', ${i.id}, renderProgramInfo)">Eliminar</button>
+      </div>
+    </div>`).join('') || '<p>No hay información del programa.</p>';
 }
 window.editInfo = async (id) => {
   const data = await API('/api/program-info');

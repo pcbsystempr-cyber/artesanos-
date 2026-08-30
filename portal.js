@@ -1,6 +1,6 @@
 // ============================================================
 //  Portal de Artesanos - Lógica (protegido por sesión)
-export const supabase = createClient("https://xtsyvpiqjfxslclglpky.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0c3l2cGlxamZ4c2xjbGdscGt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY3MjI2MzIsImV4cCI6MjEwMjI5ODYzMn0.CWutEwmciFCrO8cOc0qL9eNCKH0r8f4CShHKGpF45ZQ")
+// ============================================================
 
 const API = (url, opts) => fetch(url, {
   ...opts,
@@ -23,16 +23,21 @@ function authHeader() { return { headers: { 'Authorization': 'Bearer ' + token, 
 // ---------- Login ----------
 $('#loginForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const res = await API('/api/login', {
-    method: 'POST',
-    body: JSON.stringify({ username: $('#username').value, password: $('#password').value }),
-  });
-  if (res.ok || res.token) {
-    token = res.token;
-    localStorage.setItem('artisanToken', token);
-    showPortal();
-  } else {
-    toast(res.error || 'Acceso denegado', 'error');
+  try {
+    const res = await API('/api/login', {
+      method: 'POST',
+      body: JSON.stringify({ username: $('#username').value, password: $('#password').value }),
+    });
+    if (res.token) {
+      token = res.token;
+      localStorage.setItem('artisanToken', token);
+      showPortal();
+    } else {
+      toast(res.error || 'Acceso denegado', 'error');
+    }
+  } catch (err) {
+    console.error('Error en login:', err);
+    toast('No se pudo conectar con el servidor / base de datos.', 'error');
   }
 });
 

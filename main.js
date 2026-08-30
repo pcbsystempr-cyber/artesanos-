@@ -1,6 +1,10 @@
 
 const $ = (sel) => document.querySelector(sel);
-const api = (url, opts) => fetch(url, opts).then((r) => r.json());
+const api = async (url, opts) => {
+  const r = await fetch(url, opts);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+};
 
 function toast(msg, type = 'info') {
   const el = document.createElement('div');
@@ -156,9 +160,23 @@ function esc(str) {
 
 // ---------- Init ----------
 initTheme();
-loadAnnouncements();
-loadProgramInfo();
-loadRequirements();
-loadArtisans();
-loadAlumni();
-loadGallery();
+
+// Cada sección se carga de forma independiente. Si una falla (por ejemplo,
+// la base de datos no está disponible), se muestra un mensaje en lugar de
+// quedarse eternamente en "Cargando…".
+const LOADERS = [
+  [loadAnnouncements, '#announceGrid'],
+  [loadProgramInfo, '#infoGrid'],
+  [loadRequirements, '#reqCols'],
+  [loadArtisans, '#artisansGrid'],
+  [loadAlumni, '#alumniGrid'],
+  [loadGallery, '#galleryGrid'],
+];
+
+LOADERS.forEach(([fn, sel]) => {
+  fn().catch((err) => {
+    console.error('Error cargando ' + sel + ':', err);
+    const el = $(sel);
+    if (el) el.innerHTML = '<p style="color:#b00020">⚠️ No se pudo cargar. Verifica que el servidor y la base de datos estén activos.</p>';
+  });
+});
