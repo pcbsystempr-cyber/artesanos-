@@ -23,10 +23,18 @@ function deriveDatabaseUrl() {
 
 const DATABASE_URL = deriveDatabaseUrl();
 
+// Timeouts para que la app falle rápido en vez de quedarse "cargando"
+// indefinidamente cuando la base de datos no es accesible.
+const TIMEOUTS = {
+  connectionTimeoutMillis: 10000, // 10s para establecer conexión
+  query_timeout: 15000,           // 15s máximo por consulta
+};
+
 const poolConfig = DATABASE_URL
   ? {
       connectionString: DATABASE_URL,
       ssl: { rejectUnauthorized: false },
+      ...TIMEOUTS,
     }
   : {
       host: process.env.DB_HOST || 'localhost',
@@ -34,9 +42,19 @@ const poolConfig = DATABASE_URL
       database: process.env.DB_NAME || 'artesanos',
       user: process.env.DB_USER || 'postgres',
       password: process.env.DB_PASSWORD || 'postgres',
+      ...TIMEOUTS,
     };
 
 const pool = new Pool(poolConfig);
+
+// Evita que un error en un cliente inactivo del pool tumbe el proceso.
+pool.on('error', (err) => {
+  console.error('❌ Error inesperado en el pool de PostgreSQL:', err.message);
+});
+
+if (!DATABASE_URL) {
+  console.warn('⚠️  No hay DATABASE_URL ni SUPABASE_URL en .env: se intentará PostgreSQL local (localhost:5432).');
+}
 
 // Verifica la conexión al iniciar
 pool.connect((err, client, release) => {
