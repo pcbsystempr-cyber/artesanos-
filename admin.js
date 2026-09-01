@@ -158,6 +158,7 @@ window.openAdd = function (tab) {
     <label>Año</label><input type="number" id="f_year" />
     <label>Descripción</label><textarea id="f_desc"></textarea>
     <label>Foto (URL)</label><input id="f_photo" placeholder="https://..." />
+    <label>Subir imagen</label><input type="file" id="f_file" />
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeM()">Cancelar</button>
     <button class="btn btn-primary" onclick="addAlumni()">Crear</button></div>`);
   if (tab === 'gallery') openModal(`<h3>Nueva Foto</h3>
@@ -186,10 +187,10 @@ window.openAdd = function (tab) {
 };
 
 // Funciones de creación (POST con o sin archivo)
-async function postForm(url, fields, fileField) {
+async function postForm(url, fields, fileField, fieldName) {
   const fd = new FormData();
   fields.forEach(([k, v]) => fd.append(k, v));
-  if (fileField && $(fileField)?.files[0]) fd.append(fileField, $(fileField).files[0]);
+  if (fileField && $(fileField)?.files[0]) fd.append(fieldName || fileField, $(fileField).files[0]);
   return fetch(url, { ...authHeader(), method: 'POST', body: fd, headers: { 'Authorization': 'Bearer ' + token } }).then((r) => r.json());
 }
 window.addAnnouncement = async () => {
@@ -199,11 +200,14 @@ window.addAnnouncement = async () => {
 window.addProgramInfo = () => post('/api/program-info', { section: $('#f_section').value, title: $('#f_title').value, content: $('#f_content').value }, renderProgramInfo);
 window.addRequirement = () => post('/api/requirements', { category: $('#f_cat').value, title: $('#f_title').value, description: $('#f_desc').value, sort_order: +$('#f_order').value }, renderRequirements);
 window.addArtisan = async () => {
-  await postForm('/api/artisans', [['name', $('#f_name').value], ['specialty', $('#f_spec').value], ['description', $('#f_desc').value], ['photo', $('#f_photo').value || '']], '#f_file');
+  await postForm('/api/artisans', [['name', $('#f_name').value], ['specialty', $('#f_spec').value], ['description', $('#f_desc').value], ['photo', $('#f_photo').value || '']], '#f_file', 'photo');
   closeM(); toast('Artesano creado', 'success'); renderArtisans();
 };
-window.addAlumni = () => post('/api/alumni', { name: $('#f_name').value, year: +$('#f_year').value, description: $('#f_desc').value, photo: $('#f_photo').value || '' }, renderAlumni);
-window.addGallery = async () => { await postForm('/api/gallery', [['title', $('#f_title').value]], '#f_file'); closeM(); toast('Foto subida', 'success'); renderGallery(); };
+window.addAlumni = async () => {
+  await postForm('/api/alumni', [['name', $('#f_name').value], ['year', $('#f_year').value], ['description', $('#f_desc').value], ['photo', $('#f_photo').value || '']], '#f_file', 'photo');
+  closeM(); toast('Artesano anterior creado', 'success'); renderAlumni();
+};
+window.addGallery = async () => { await postForm('/api/gallery', [['title', $('#f_title').value]], '#f_file', 'image'); closeM(); toast('Foto subida', 'success'); renderGallery(); };
 window.addNotice = () => post('/api/artisan-notices', { title: $('#f_title').value, body: $('#f_body').value, published_at: $('#f_date').value, is_urgent: $('#f_urgent').checked }, renderNotices);
 window.addDocument = async () => { await postForm('/api/documents', [['title', $('#f_title').value]], '#f_file'); closeM(); toast('Documento subido', 'success'); renderDocuments(); };
 window.addActivity = () => post('/api/activities', { title: $('#f_title').value, activity_date: $('#f_date').value, description: $('#f_desc').value }, renderActivities);
@@ -329,11 +333,18 @@ window.editAlumni = async (id) => {
     <label>Año</label><input type="number" id="f_year" value="${a.year}" />
     <label>Descripción</label><textarea id="f_desc">${esc(a.description || '')}</textarea>
     <label>Foto (URL)</label><input id="f_photo" value="${esc(a.photo)}" />
+    <label>Cambiar imagen</label><input type="file" id="f_file" />
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeM()">Cancelar</button>
     <button class="btn btn-primary" onclick="saveAlumni(${id})">Guardar</button></div>`);
 };
 window.saveAlumni = async (id) => {
-  await API('/api/alumni/' + id, { ...authHeader(), method: 'PUT', body: JSON.stringify({ name: $('#f_name').value, year: +$('#f_year').value, description: $('#f_desc').value, photo: $('#f_photo').value || '' }) });
+  const fd = new FormData();
+  fd.append('name', $('#f_name').value);
+  fd.append('year', $('#f_year').value);
+  fd.append('description', $('#f_desc').value);
+  if ($('#f_photo').value) fd.append('photo', $('#f_photo').value);
+  if ($('#f_file').files[0]) fd.append('photo', $('#f_file').files[0]);
+  await fetch('/api/alumni/' + id, { method: 'PUT', body: fd, headers: { 'Authorization': 'Bearer ' + token } });
   closeM(); toast('Actualizado', 'success'); renderAlumni();
 };
 
@@ -364,7 +375,6 @@ window.editFair = (id) => {
     <label>Fecha</label><input type="date" id="f_date" value="${f.event_date || ''}" />
     <label>Hora</label><input id="f_time" value="${esc(f.event_time)}" />
     <label>Lugar</label><input id="f_loc" value="${esc(f.location)}" />
-    <label>URL del mapa (iframe embed)</label><textarea id="f_map">${esc(f.map_url)}</textarea>
     <label>Descripción</label><textarea id="f_desc">${esc(f.description)}</textarea>
     <label>Requisitos</label><textarea id="f_req">${esc(f.requirements)}</textarea>
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeM()">Cancelar</button>
@@ -373,7 +383,7 @@ window.editFair = (id) => {
 window.saveFair = async (id) => {
   await API('/api/craft-fair/' + id, { ...authHeader(), method: 'PUT', body: JSON.stringify({
     title: $('#f_title').value, event_date: $('#f_date').value, event_time: $('#f_time').value,
-    location: $('#f_loc').value, map_url: $('#f_map').value, description: $('#f_desc').value, requirements: $('#f_req').value
+    location: $('#f_loc').value, description: $('#f_desc').value, requirements: $('#f_req').value
   }) });
   closeM(); toast('Feria actualizada', 'success'); renderFair();
 };

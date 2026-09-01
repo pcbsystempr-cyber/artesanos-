@@ -18,24 +18,76 @@ function toast(msg, type = 'info') {
 function initTheme() {
   const saved = localStorage.getItem('theme');
   if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-  $('#themeToggle').textContent = saved === 'dark' ? '☀️' : '🌙';
+  updateThemeButtons(saved === 'dark');
 }
-$('#themeToggle')?.addEventListener('click', () => {
+
+function updateThemeButtons(isDark) {
+  const btn = $('#themeToggleDesktop');
+  const btnMobile = $('#themeToggle');
+  if (btn) btn.textContent = isDark ? '☀️' : '🌙';
+  if (btnMobile) btnMobile.textContent = isDark ? '☀️' : '🌙';
+}
+
+function toggleTheme() {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   if (isDark) {
     document.documentElement.removeAttribute('data-theme');
     localStorage.setItem('theme', 'light');
-    $('#themeToggle').textContent = '🌙';
+    updateThemeButtons(false);
   } else {
     document.documentElement.setAttribute('data-theme', 'dark');
     localStorage.setItem('theme', 'dark');
-    $('#themeToggle').textContent = '☀️';
+    updateThemeButtons(true);
+  }
+}
+
+$('#themeToggleDesktop')?.addEventListener('click', toggleTheme);
+$('#themeToggle')?.addEventListener('click', toggleTheme);
+
+// ---------- Menú móvil ----------
+const menuToggle = $('#menuToggle');
+const mobileMenuPanel = $('#navLinks');
+const mobileMenuOverlay = $('#mobileMenuOverlay');
+const mobileMenuClose = $('#mobileMenuClose');
+
+function openMobileMenu() {
+  mobileMenuPanel.classList.add('open');
+  mobileMenuOverlay.classList.add('active');
+  menuToggle.setAttribute('aria-expanded', 'true');
+  document.body.style.overflow = 'hidden';
+  mobileMenuClose.focus();
+}
+
+function closeMobileMenu() {
+  mobileMenuPanel.classList.remove('open');
+  mobileMenuOverlay.classList.remove('active');
+  menuToggle.setAttribute('aria-expanded', 'false');
+  document.body.style.overflow = '';
+  menuToggle.focus();
+}
+
+menuToggle?.addEventListener('click', () => {
+  if (mobileMenuPanel.classList.contains('open')) {
+    closeMobileMenu();
+  } else {
+    openMobileMenu();
   }
 });
 
-// ---------- Menú móvil ----------
-$('#menuToggle')?.addEventListener('click', () => {
-  $('#navLinks').classList.toggle('open');
+mobileMenuClose?.addEventListener('click', closeMobileMenu);
+
+mobileMenuOverlay?.addEventListener('click', closeMobileMenu);
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && mobileMenuPanel?.classList.contains('open')) {
+    closeMobileMenu();
+  }
+});
+
+mobileMenuPanel?.addEventListener('click', (e) => {
+  if (e.target.tagName === 'A') {
+    closeMobileMenu();
+  }
 });
 
 // ---------- Año del footer ----------

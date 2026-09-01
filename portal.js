@@ -48,6 +48,12 @@ $('#logoutBtn')?.addEventListener('click', () => {
 });
 
 // ---------- Modo oscuro ----------
+if (localStorage.getItem('ptheme') === 'dark') {
+  document.documentElement.setAttribute('data-theme', 'dark');
+  const tg = document.querySelector('#themeToggle');
+  if (tg) tg.textContent = '☀️';
+}
+
 $('#themeToggle')?.addEventListener('click', () => {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   if (isDark) { document.documentElement.removeAttribute('data-theme'); localStorage.setItem('ptheme', 'light'); $('#themeToggle').textContent = '🌙'; }
@@ -65,15 +71,12 @@ function showPortal() {
 async function loadFair() {
   const f = await API('/api/craft-fair');
   $('#fairContent').innerHTML = `
-    <h3 style="color:#c1272d;margin-bottom:0.5rem;">${esc(f.title || 'Por confirmar')}</h3>
+    <h3 class="fair-title">${esc(f.title || 'Por confirmar')}</h3>
     <p><strong>📅 Fecha:</strong> ${f.event_date || '—'}</p>
     <p><strong>🕒 Hora:</strong> ${esc(f.event_time || '—')}</p>
     <p><strong>📍 Lugar:</strong> ${esc(f.location || '—')}</p>
     <p style="margin-top:0.6rem;">${esc(f.description || '')}</p>
-    <p style="margin-top:0.6rem;"><strong>Requisitos para participar:</strong> ${esc(f.requirements || '—')}</p>`;
-  $('#map').innerHTML = f.map_url
-    ? `<iframe src="${esc(f.map_url)}" allowfullscreen loading="lazy"></iframe>`
-    : '<p>Mapa no disponible.</p>';
+     <p style="margin-top:0.6rem;"><strong>Requisitos para participar:</strong> ${esc(f.requirements || '—')}</p>`;
 }
 
 // ---------- Cargar Avisos ----------
@@ -100,7 +103,7 @@ async function loadCalendar() {
     <div class="cal-item">
       <div class="date">📅 ${a.activity_date || ''}</div>
       <strong>${esc(a.title)}</strong>
-      <p style="font-size:0.85rem;color:#555;">${esc(a.description || '')}</p>
+      <p class="cal-desc">${esc(a.description || '')}</p>
     </div>`).join('') || '<p>Sin actividades programadas.</p>';
 }
 

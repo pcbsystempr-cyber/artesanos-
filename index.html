@@ -20,19 +20,42 @@
       <span class="logo">🧶</span>
       <span>Artesanos Escolares</span>
     </div>
-    <button class="menu-toggle" id="menuToggle" aria-label="Abrir menú">☰</button>
-    <ul class="nav-links" id="navLinks">
+    <button class="menu-toggle" id="menuToggle" aria-label="Abrir menú" aria-expanded="false" aria-controls="navLinks">☰</button>
+    <ul class="nav-links" id="desktopNavLinks">
       <li><a href="#inicio">Inicio</a></li>
       <li><a href="#anuncios">Anuncios</a></li>
       <li><a href="#programa">Programa</a></li>
       <li><a href="#requisitos">Requisitos</a></li>
       <li><a href="#artesanos">Artesanos</a></li>
       <li><a href="#galeria">Galería</a></li>
-      <li><button class="theme-toggle" id="themeToggle" aria-label="Cambiar tema">🌙</button></li>
+      <li><button class="theme-toggle" id="themeToggleDesktop" aria-label="Cambiar tema">🌙</button></li>
       <li><a class="btn btn-gold btn-sm" href="admin.html" id="Administrarbtn">Administrar</a></li>
       <li><a class="btn btn-ghost btn-sm" href="portal.html">Portal Artesanos</a></li>
     </ul>
   </nav>
+
+  <!-- ============== MENÚ MÓVIL ============== -->
+  <div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
+  <div class="mobile-menu-panel" id="navLinks" role="dialog" aria-modal="true" aria-label="Menú de navegación">
+    <button class="mobile-menu-close" id="mobileMenuClose" aria-label="Cerrar menú">✕</button>
+    <ul class="mobile-nav-links">
+      <li><a href="#inicio">Inicio</a></li>
+      <li><a href="#anuncios">Anuncios</a></li>
+      <li><a href="#programa">Programa</a></li>
+      <li><a href="#requisitos">Requisitos</a></li>
+      <li><a href="#artesanos">Artesanos</a></li>
+      <li><a href="#galeria">Galería</a></li>
+      <li class="mobile-menu-actions">
+        <button class="theme-toggle" id="themeToggle" aria-label="Cambiar tema">🌙</button>
+      </li>
+      <li class="mobile-menu-actions">
+        <a class="btn btn-gold btn-sm" href="admin.html">Administrar</a>
+      </li>
+      <li class="mobile-menu-actions">
+        <a class="btn btn-ghost btn-sm" href="portal.html">Portal Artesanos</a>
+      </li>
+    </ul>
+  </div>
 
   <!-- ============== HERO / INICIO ============== -->
   <header class="hero" id="inicio">
@@ -85,9 +108,7 @@
     <div class="container">
       <h2 class="section-title">Artesanos Actuales</h2>
       <p class="section-sub">Nuestros talentos en formación</p>
-      <div class="search-bar">
-        <input type="text" id="artisanSearch" placeholder="🔎 Buscar artesano por nombre o especialidad…" aria-label="Buscar artesano" />
-      </div>
+
       <div class="cards-grid" id="artisansGrid">
         <p>Cargando artesanos…</p>
       </div>
