@@ -201,22 +201,28 @@ window.addAnnouncement = async () => {
 window.addProgramInfo = () => post('/api/program-info', { section: $('#f_section').value, title: $('#f_title').value, content: $('#f_content').value }, renderProgramInfo);
 window.addRequirement = () => post('/api/requirements', { category: $('#f_cat').value, title: $('#f_title').value, description: $('#f_desc').value, sort_order: +$('#f_order').value }, renderRequirements);
 window.addArtisan = async () => {
-  await postForm('/api/artisans', [['name', $('#f_name').value], ['specialty', $('#f_spec').value], ['description', $('#f_desc').value], ['photo', $('#f_photo').value || '']], '#f_file', 'photo');
+  const photo = $('#f_photo').value.trim();
+  if (photo && !photo.startsWith('https://')) { toast('La URL de la foto debe comenzar con https://', 'error'); return; }
+  await postForm('/api/artisans', [['name', $('#f_name').value], ['specialty', $('#f_spec').value], ['description', $('#f_desc').value], ['photo', photo]], '#f_file', 'photo');
   closeM(); toast('Artesano creado', 'success'); renderArtisans();
 };
 window.addAlumni = async () => {
-  await postForm('/api/alumni', [['name', $('#f_name').value], ['year', $('#f_year').value], ['description', $('#f_desc').value], ['photo', $('#f_photo').value || '']], '#f_file', 'photo');
+  const photo = $('#f_photo').value.trim();
+  if (photo && !photo.startsWith('https://')) { toast('La URL de la foto debe comenzar con https://', 'error'); return; }
+  await postForm('/api/alumni', [['name', $('#f_name').value], ['year', $('#f_year').value], ['description', $('#f_desc').value], ['photo', photo]], '#f_file', 'photo');
   closeM(); toast('Artesano anterior creado', 'success'); renderAlumni();
 };
 window.addGallery = async () => {
   const url = $('#f_image_url').value.trim();
   const file = $('#f_file').files[0];
   if (!url && !file) { toast('Ingresa una URL o selecciona una imagen', 'error'); return; }
+  if (url && !url.startsWith('https://')) { toast('La URL debe comenzar con https://', 'error'); return; }
   const fd = new FormData();
   fd.append('title', $('#f_title').value);
   if (url) fd.append('image', url);
   if (file) fd.append('image', file);
-  await fetch('/api/gallery', { headers: { 'Authorization': 'Bearer ' + token }, method: 'POST', body: fd });
+  const res = await fetch('/api/gallery', { headers: { 'Authorization': 'Bearer ' + token }, method: 'POST', body: fd });
+  if (!res.ok) { const err = await res.json().catch(() => ({ error: 'Error desconocido' })); toast(err.error || 'Error al guardar', 'error'); return; }
   closeM(); toast('Foto guardada', 'success'); renderGallery();
 };
 window.addNotice = () => post('/api/artisan-notices', { title: $('#f_title').value, body: $('#f_body').value, published_at: $('#f_date').value, is_urgent: $('#f_urgent').checked }, renderNotices);
@@ -316,9 +322,12 @@ window.editArtisan = async (id) => {
 window.saveArtisan = async (id) => {
   const fd = new FormData();
   fd.append('name', $('#f_name').value); fd.append('specialty', $('#f_spec').value); fd.append('description', $('#f_desc').value);
-  if ($('#f_photo').value) fd.append('photo', $('#f_photo').value);
+  const photoUrl = $('#f_photo').value.trim();
+  if (photoUrl && !photoUrl.startsWith('https://')) { toast('La URL de la foto debe comenzar con https://', 'error'); return; }
+  if (photoUrl) fd.append('photo', photoUrl);
   if ($('#f_file').files[0]) fd.append('photo', $('#f_file').files[0]);
-  await fetch('/api/artisans/' + id, { method: 'PUT', body: fd, headers: { 'Authorization': 'Bearer ' + token } });
+  const res = await fetch('/api/artisans/' + id, { method: 'PUT', body: fd, headers: { 'Authorization': 'Bearer ' + token } });
+  if (!res.ok) { const err = await res.json().catch(() => ({ error: 'Error desconocido' })); toast(err.error || 'Error al actualizar', 'error'); return; }
   closeM(); toast('Actualizado', 'success'); renderArtisans();
 };
 
@@ -353,9 +362,12 @@ window.saveAlumni = async (id) => {
   fd.append('name', $('#f_name').value);
   fd.append('year', $('#f_year').value);
   fd.append('description', $('#f_desc').value);
-  if ($('#f_photo').value) fd.append('photo', $('#f_photo').value);
+  const photoUrl = $('#f_photo').value.trim();
+  if (photoUrl && !photoUrl.startsWith('https://')) { toast('La URL de la foto debe comenzar con https://', 'error'); return; }
+  if (photoUrl) fd.append('photo', photoUrl);
   if ($('#f_file').files[0]) fd.append('photo', $('#f_file').files[0]);
-  await fetch('/api/alumni/' + id, { method: 'PUT', body: fd, headers: { 'Authorization': 'Bearer ' + token } });
+  const res = await fetch('/api/alumni/' + id, { method: 'PUT', body: fd, headers: { 'Authorization': 'Bearer ' + token } });
+  if (!res.ok) { const err = await res.json().catch(() => ({ error: 'Error desconocido' })); toast(err.error || 'Error al actualizar', 'error'); return; }
   closeM(); toast('Actualizado', 'success'); renderAlumni();
 };
 

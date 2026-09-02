@@ -147,7 +147,7 @@ function renderArtisans(list) {
   if (!list.length) { grid.innerHTML = '<p>No se encontraron artesanos.</p>'; return; }
   grid.innerHTML = list.map((a) => `
     <article class="art-card reveal">
-      <img src="${esc(a.photo || 'https://via.placeholder.com/300?text=Artesano')}" alt="${esc(a.name)}" loading="lazy" />
+      <img src="${esc(a.photo || 'https://via.placeholder.com/300?text=Artesano')}" alt="${esc(a.name)}" loading="lazy" onerror="this.src='https://via.placeholder.com/300?text=Artesano'" />
       <div class="body">
         <span class="spec">${esc(a.specialty)}</span>
         <h3>${esc(a.name)}</h3>
@@ -171,7 +171,7 @@ async function loadAlumni() {
   const grid = $('#alumniGrid');
   grid.innerHTML = data.map((a) => `
     <article class="art-card reveal">
-      <img src="${esc(a.photo || 'https://via.placeholder.com/300?text=Alumno')}" alt="${esc(a.name)}" loading="lazy" />
+      <img src="${esc(a.photo || 'https://via.placeholder.com/300?text=Alumno')}" alt="${esc(a.name)}" loading="lazy" onerror="this.src='https://via.placeholder.com/300?text=Alumno'" />
       <div class="body">
         <span class="spec">Clase ${a.year}</span>
         <h3>${esc(a.name)}</h3>
@@ -187,7 +187,7 @@ async function loadGallery() {
   const grid = $('#galleryGrid');
   grid.innerHTML = data.map((g) => `
     <figure class="reveal">
-      <img src="${esc(g.image)}" alt="${esc(g.title || 'Galería')}" loading="lazy" />
+      <img src="${esc(g.image)}" alt="${esc(g.title || 'Galería')}" loading="lazy" onerror="this.src='https://via.placeholder.com/400?text=Imagen'" />
       <figcaption>${esc(g.title || '')}</figcaption>
     </figure>`).join('');
   observeReveals();
