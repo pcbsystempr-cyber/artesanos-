@@ -255,10 +255,10 @@ app.get('/api/gallery', async (req, res) => {
 });
 
 app.post('/api/gallery', authenticate, requireAdmin, upload.single('image'), async (req, res) => {
-  const { title } = req.body;
-  const image = req.file ? '/uploads/' + req.file.filename : '';
-  if (!image) return res.status(400).json({ error: 'Imagen requerida' });
-  const result = await pool.query('INSERT INTO gallery (title, image) VALUES ($1,$2) RETURNING *', [title, image]);
+  const { title, image } = req.body;
+  const imagePath = req.file ? '/uploads/' + req.file.filename : (image || '');
+  if (!imagePath) return res.status(400).json({ error: 'Imagen requerida' });
+  const result = await pool.query('INSERT INTO gallery (title, image) VALUES ($1,$2) RETURNING *', [title, imagePath]);
   res.json(result.rows[0]);
 });
 

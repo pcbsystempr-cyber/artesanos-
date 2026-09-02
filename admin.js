@@ -163,9 +163,10 @@ window.openAdd = function (tab) {
     <button class="btn btn-primary" onclick="addAlumni()">Crear</button></div>`);
   if (tab === 'gallery') openModal(`<h3>Nueva Foto</h3>
     <label>Título</label><input id="f_title" />
-    <label>Imagen</label><input type="file" id="f_file" required />
+    <label>Imagen (URL)</label><input id="f_image_url" placeholder="https://..." />
+    <label>Subir imagen</label><input type="file" id="f_file" />
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeM()">Cancelar</button>
-    <button class="btn btn-primary" onclick="addGallery()">Subir</button></div>`);
+    <button class="btn btn-primary" onclick="addGallery()">Guardar</button></div>`);
   if (tab === 'notices') openModal(`<h3>Nuevo Aviso</h3>
     <label>Título</label><input id="f_title" />
     <label>Cuerpo</label><textarea id="f_body"></textarea>
@@ -207,7 +208,17 @@ window.addAlumni = async () => {
   await postForm('/api/alumni', [['name', $('#f_name').value], ['year', $('#f_year').value], ['description', $('#f_desc').value], ['photo', $('#f_photo').value || '']], '#f_file', 'photo');
   closeM(); toast('Artesano anterior creado', 'success'); renderAlumni();
 };
-window.addGallery = async () => { await postForm('/api/gallery', [['title', $('#f_title').value]], '#f_file', 'image'); closeM(); toast('Foto subida', 'success'); renderGallery(); };
+window.addGallery = async () => {
+  const url = $('#f_image_url').value.trim();
+  const file = $('#f_file').files[0];
+  if (!url && !file) { toast('Ingresa una URL o selecciona una imagen', 'error'); return; }
+  const fd = new FormData();
+  fd.append('title', $('#f_title').value);
+  if (url) fd.append('image', url);
+  if (file) fd.append('image', file);
+  await fetch('/api/gallery', { headers: { 'Authorization': 'Bearer ' + token }, method: 'POST', body: fd });
+  closeM(); toast('Foto guardada', 'success'); renderGallery();
+};
 window.addNotice = () => post('/api/artisan-notices', { title: $('#f_title').value, body: $('#f_body').value, published_at: $('#f_date').value, is_urgent: $('#f_urgent').checked }, renderNotices);
 window.addDocument = async () => { await postForm('/api/documents', [['title', $('#f_title').value]], '#f_file'); closeM(); toast('Documento subido', 'success'); renderDocuments(); };
 window.addActivity = () => post('/api/activities', { title: $('#f_title').value, activity_date: $('#f_date').value, description: $('#f_desc').value }, renderActivities);

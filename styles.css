@@ -87,8 +87,7 @@ a { color: var(--madera); text-decoration: none; }
 }
 .navbar .brand .logo {
   width: 38px; height: 38px; border-radius: 50%;
-  background: var(--madera); color: var(--crema-claro);
-  display: grid; place-items: center; font-size: 1.2rem;
+  object-fit: cover;
 }
 .nav-links { display: flex; gap: 1.2rem; list-style: none; align-items: center; }
 .nav-links a {
@@ -115,8 +114,10 @@ a { color: var(--madera); text-decoration: none; }
 .btn-primary { background: var(--madera); color: var(--crema-claro); }
 .btn-gold { background: var(--tierra); color: #fffaf0; }
 #Administrarbtn { color: #fffaf0 !important; }
-.btn-ghost { background: transparent; border: 2px solid var(--madera); color: var(--madera-oscuro); }
+.btn-ghost { background: var(--arena); border: 2px solid var(--madera); color: var(--madera-oscuro); }
 .btn-ghost:hover { background: var(--madera); color: var(--crema-claro); }
+[data-theme="dark"] .btn-ghost { color: var(--madera); border-color: var(--madera-claro); background: var(--crema); }
+[data-theme="dark"] .btn-ghost:hover { background: var(--madera); color: var(--crema-claro); }
 .btn-sm { padding: 0.45rem 0.9rem; font-size: 0.85rem; }
 .btn-danger { background: #a23b2c; color: #fff; }
 
