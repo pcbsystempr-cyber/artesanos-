@@ -1,6 +1,6 @@
-# 🧶 Programa Escolar de Artesanos
+# 🧶 Organización de Artesanos y Empresarios Juveniles PCB
 
-Aplicación web full stack para un **Programa Escolar de Artesanos**, inspirada en la
+Aplicación web full stack para un **Organización de Artesanos y Empresarios Juveniles PCB**, inspirada en la
 artesanía y cultura puertorriqueña. Incluye sitio público, panel de administración con
 CRUD completo y un portal exclusivo para artesanos, con persistencia en base de datos.
 
@@ -145,5 +145,5 @@ Abre:
 - El buscador de artesanos filtra por nombre y especialidad en el cliente.
 - Toda la entrada de usuario se escapa para evitar XSS en el render.
 
-© Programa Escolar de Artesanos · Puerto Rico 🇵🇷
+© Organización de Artesanos y Empresarios Juveniles PCB · Puerto Rico 🇵🇷
 # Artesanos
