@@ -5,6 +5,7 @@ const path = require('path');
 const multer = require('multer');
 const pool = require('./supabase/db');
 const { bcrypt, signToken, authenticate, requireAdmin, requireArtisan } = require('./supabase/auth');
+const { supabaseAdmin } = require('./supabase/supabaseClient');
 
 const app = express();
 
@@ -38,14 +39,34 @@ app.use(express.static(__dirname));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Configuración de subida de archivos (multer)
-const storage = multer.diskStorage({
+const imageStorage = multer.memoryStorage();
+const uploadImage = multer({ storage: imageStorage, limits: { fileSize: 5 * 1024 * 1024 } });
+
+const documentStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, path.join(__dirname, 'uploads')),
   filename: (req, file, cb) => {
     const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
     cb(null, unique + path.extname(file.originalname));
   },
 });
-const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } }); // 5MB
+const uploadDocument = multer({ storage: documentStorage, limits: { fileSize: 5 * 1024 * 1024 } });
+
+async function uploadToSupabaseStorage(file, bucket = 'photos') {
+  const ext = path.extname(file.originalname || '');
+  const fileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+
+  const { data, error } = await supabaseAdmin.storage
+    .from(bucket)
+    .upload(fileName, file.buffer, {
+      contentType: file.mimetype,
+      upsert: true,
+    });
+
+  if (error) throw new Error(error.message);
+
+  const { data: publicData } = supabaseAdmin.storage.from(bucket).getPublicUrl(fileName);
+  return publicData.publicUrl;
+}
 
 // ============================================================
 //  AUTENTICACIÓN
@@ -177,9 +198,17 @@ app.get('/api/artisans', async (req, res) => {
   res.json(result.rows);
 });
 
-app.post('/api/artisans', authenticate, requireAdmin, upload.single('photo'), async (req, res) => {
+app.post('/api/artisans', authenticate, requireAdmin, uploadImage.single('photo'), async (req, res) => {
   const { name, specialty, description } = req.body;
-  const photo = req.file ? '/uploads/' + req.file.filename : (req.body.photo || '');
+  let photo = req.body.photo || '';
+  if (req.file) {
+    try {
+      photo = await uploadToSupabaseStorage(req.file, 'photos');
+    } catch (err) {
+      console.error('Error subiendo a Supabase:', err.message);
+      return res.status(500).json({ error: 'No se pudo subir la imagen' });
+    }
+  }
   const result = await pool.query(
     'INSERT INTO artisans (name, specialty, description, photo) VALUES ($1,$2,$3,$4) RETURNING *',
     [name, specialty, description, photo]
@@ -187,11 +216,19 @@ app.post('/api/artisans', authenticate, requireAdmin, upload.single('photo'), as
   res.json(result.rows[0]);
 });
 
-app.put('/api/artisans/:id', authenticate, requireAdmin, upload.single('photo'), async (req, res) => {
+app.put('/api/artisans/:id', authenticate, requireAdmin, uploadImage.single('photo'), async (req, res) => {
   const { name, specialty, description } = req.body;
-  const photo = req.file ? '/uploads/' + req.file.filename : (req.body.photo || null);
+  let photo = req.body.photo || null;
+  if (req.file) {
+    try {
+      photo = await uploadToSupabaseStorage(req.file, 'photos');
+    } catch (err) {
+      console.error('Error subiendo a Supabase:', err.message);
+      return res.status(500).json({ error: 'No se pudo subir la imagen' });
+    }
+  }
   let query, params;
-  if (photo) {
+  if (photo !== null) {
     query = 'UPDATE artisans SET name=$1, specialty=$2, description=$3, photo=$4 WHERE id=$5 RETURNING *';
     params = [name, specialty, description, photo, req.params.id];
   } else {
@@ -216,9 +253,17 @@ app.get('/api/alumni', async (req, res) => {
   res.json(result.rows);
 });
 
-app.post('/api/alumni', authenticate, requireAdmin, upload.single('photo'), async (req, res) => {
+app.post('/api/alumni', authenticate, requireAdmin, uploadImage.single('photo'), async (req, res) => {
   const { name, year, description } = req.body;
-  const photo = req.file ? '/uploads/' + req.file.filename : (req.body.photo || '');
+  let photo = req.body.photo || '';
+  if (req.file) {
+    try {
+      photo = await uploadToSupabaseStorage(req.file, 'photos');
+    } catch (err) {
+      console.error('Error subiendo a Supabase:', err.message);
+      return res.status(500).json({ error: 'No se pudo subir la imagen' });
+    }
+  }
   const result = await pool.query(
     'INSERT INTO alumni (name, year, description, photo) VALUES ($1,$2,$3,$4) RETURNING *',
     [name, year, description, photo]
@@ -226,11 +271,19 @@ app.post('/api/alumni', authenticate, requireAdmin, upload.single('photo'), asyn
   res.json(result.rows[0]);
 });
 
-app.put('/api/alumni/:id', authenticate, requireAdmin, upload.single('photo'), async (req, res) => {
+app.put('/api/alumni/:id', authenticate, requireAdmin, uploadImage.single('photo'), async (req, res) => {
   const { name, year, description } = req.body;
-  const photo = req.file ? '/uploads/' + req.file.filename : (req.body.photo || null);
+  let photo = req.body.photo || null;
+  if (req.file) {
+    try {
+      photo = await uploadToSupabaseStorage(req.file, 'photos');
+    } catch (err) {
+      console.error('Error subiendo a Supabase:', err.message);
+      return res.status(500).json({ error: 'No se pudo subir la imagen' });
+    }
+  }
   let query, params;
-  if (photo) {
+  if (photo !== null) {
     query = 'UPDATE alumni SET name=$1, year=$2, description=$3, photo=$4 WHERE id=$5 RETURNING *';
     params = [name, year, description, photo, req.params.id];
   } else {
@@ -254,9 +307,17 @@ app.get('/api/gallery', async (req, res) => {
   res.json(result.rows);
 });
 
-app.post('/api/gallery', authenticate, requireAdmin, upload.single('image'), async (req, res) => {
+app.post('/api/gallery', authenticate, requireAdmin, uploadImage.single('image'), async (req, res) => {
   const { title, image } = req.body;
-  const imagePath = req.file ? '/uploads/' + req.file.filename : (image || '');
+  let imagePath = image || '';
+  if (req.file) {
+    try {
+      imagePath = await uploadToSupabaseStorage(req.file, 'photos');
+    } catch (err) {
+      console.error('Error subiendo a Supabase:', err.message);
+      return res.status(500).json({ error: 'No se pudo subir la imagen' });
+    }
+  }
   if (!imagePath) return res.status(400).json({ error: 'Imagen requerida' });
   const result = await pool.query('INSERT INTO gallery (title, image) VALUES ($1,$2) RETURNING *', [title, imagePath]);
   res.json(result.rows[0]);
@@ -313,7 +374,7 @@ app.get('/api/documents', async (req, res) => {
   res.json(result.rows);
 });
 
-app.post('/api/documents', authenticate, requireAdmin, upload.single('file'), async (req, res) => {
+app.post('/api/documents', authenticate, requireAdmin, uploadDocument.single('file'), async (req, res) => {
   const { title } = req.body;
   const filename = req.file ? req.file.filename : '';
   if (!filename) return res.status(400).json({ error: 'Archivo requerido' });
@@ -376,3 +437,4 @@ app.listen(PORT, () => {
   console.log(`    Admin:    /admin   (usuario: ${process.env.ADMIN_USER || 'admin'})`);
   console.log(`    Portal:   /portal  (usuario: ${process.env.ARTISAN_USER || 'artesano'})`);
 });
+
