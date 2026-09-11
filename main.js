@@ -152,6 +152,7 @@ function renderArtisans(list) {
         <span class="spec">${esc(a.specialty)}</span>
         <h3>${esc(a.name)}</h3>
         <p>${esc(a.description || '')}</p>
+        ${socialLinks(a.instagram, a.facebook)}
       </div>
     </article>`).join('');
   observeReveals();
@@ -176,6 +177,7 @@ async function loadAlumni() {
         <span class="spec">Clase ${a.year}</span>
         <h3>${esc(a.name)}</h3>
         <p>${esc(a.description || '')}</p>
+        ${socialLinks(a.instagram, a.facebook)}
       </div>
     </article>`).join('');
   observeReveals();
@@ -204,10 +206,35 @@ function observeReveals() {
   document.querySelectorAll('.reveal:not(.visible)').forEach((el) => observer.observe(el));
 }
 
-// Escapar HTML (seguridad básica)
 function esc(str) {
   if (str == null) return '';
   return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function normalizeInstagram(val) {
+  if (!val) return '';
+  const v = val.trim();
+  if (v.startsWith('http')) return v;
+  if (v.startsWith('@')) return 'https://instagram.com/' + v.slice(1);
+  return 'https://instagram.com/' + v;
+}
+
+function normalizeFacebook(val) {
+  if (!val) return '';
+  const v = val.trim();
+  if (v.startsWith('http')) return v;
+  if (v.startsWith('@')) return 'https://facebook.com/' + v.slice(1);
+  if (!v.includes('facebook.com')) return 'https://facebook.com/' + v;
+  return v;
+}
+
+function socialLinks(ig, fb) {
+  const items = [];
+  const igUrl = normalizeInstagram(ig);
+  const fbUrl = normalizeFacebook(fb);
+  if (igUrl) items.push(`<a class="social-link ig" href="${esc(igUrl)}" target="_blank" rel="noopener" aria-label="Instagram">Instagram</a>`);
+  if (fbUrl) items.push(`<a class="social-link fb" href="${esc(fbUrl)}" target="_blank" rel="noopener" aria-label="Facebook">Facebook</a>`);
+  return items.length ? `<div class="art-social">${items.join('')}</div>` : '';
 }
 
 // ---------- Init ----------

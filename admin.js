@@ -149,6 +149,8 @@ window.openAdd = function (tab) {
     <label>Nombre</label><input id="f_name" />
     <label>Especialidad</label><input id="f_spec" />
     <label>Descripción</label><textarea id="f_desc"></textarea>
+    <label>Instagram (usuario o URL)</label><input id="f_ig" placeholder="@usuario o https://instagram.com/usuario" />
+    <label>Facebook (URL o usuario)</label><input id="f_fb" placeholder="https://facebook.com/usuario" />
     <label>Foto (URL o subir)</label><input id="f_photo" placeholder="https://..." />
     <label>Subir imagen</label><input type="file" id="f_file" />
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeM()">Cancelar</button>
@@ -157,6 +159,8 @@ window.openAdd = function (tab) {
     <label>Nombre</label><input id="f_name" />
     <label>Año</label><input type="number" id="f_year" />
     <label>Descripción</label><textarea id="f_desc"></textarea>
+    <label>Instagram (usuario o URL)</label><input id="f_ig" placeholder="@usuario o https://instagram.com/usuario" />
+    <label>Facebook (URL o usuario)</label><input id="f_fb" placeholder="https://facebook.com/usuario" />
     <label>Foto (URL)</label><input id="f_photo" placeholder="https://..." />
     <label>Subir imagen</label><input type="file" id="f_file" />
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeM()">Cancelar</button>
@@ -203,13 +207,13 @@ window.addRequirement = () => post('/api/requirements', { category: $('#f_cat').
 window.addArtisan = async () => {
   const photo = $('#f_photo').value.trim();
   if (photo && !photo.startsWith('https://')) { toast('La URL de la foto debe comenzar con https://', 'error'); return; }
-  await postForm('/api/artisans', [['name', $('#f_name').value], ['specialty', $('#f_spec').value], ['description', $('#f_desc').value], ['photo', photo]], '#f_file', 'photo');
+  await postForm('/api/artisans', [['name', $('#f_name').value], ['specialty', $('#f_spec').value], ['description', $('#f_desc').value], ['instagram', $('#f_ig').value.trim()], ['facebook', $('#f_fb').value.trim()], ['photo', photo]], '#f_file', 'photo');
   closeM(); toast('Artesano creado', 'success'); renderArtisans();
 };
 window.addAlumni = async () => {
   const photo = $('#f_photo').value.trim();
   if (photo && !photo.startsWith('https://')) { toast('La URL de la foto debe comenzar con https://', 'error'); return; }
-  await postForm('/api/alumni', [['name', $('#f_name').value], ['year', $('#f_year').value], ['description', $('#f_desc').value], ['photo', photo]], '#f_file', 'photo');
+  await postForm('/api/alumni', [['name', $('#f_name').value], ['year', $('#f_year').value], ['description', $('#f_desc').value], ['instagram', $('#f_ig').value.trim()], ['facebook', $('#f_fb').value.trim()], ['photo', photo]], '#f_file', 'photo');
   closeM(); toast('Artesano anterior creado', 'success'); renderAlumni();
 };
 window.addGallery = async () => {
@@ -314,6 +318,8 @@ window.editArtisan = async (id) => {
     <label>Nombre</label><input id="f_name" value="${esc(a.name)}" />
     <label>Especialidad</label><input id="f_spec" value="${esc(a.specialty)}" />
     <label>Descripción</label><textarea id="f_desc">${esc(a.description || '')}</textarea>
+    <label>Instagram</label><input id="f_ig" value="${esc(a.instagram || '')}" />
+    <label>Facebook</label><input id="f_fb" value="${esc(a.facebook || '')}" />
     <label>Foto (URL)</label><input id="f_photo" value="${esc(a.photo)}" />
     <label>Cambiar imagen</label><input type="file" id="f_file" />
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeM()">Cancelar</button>
@@ -322,6 +328,7 @@ window.editArtisan = async (id) => {
 window.saveArtisan = async (id) => {
   const fd = new FormData();
   fd.append('name', $('#f_name').value); fd.append('specialty', $('#f_spec').value); fd.append('description', $('#f_desc').value);
+  fd.append('instagram', $('#f_ig').value.trim()); fd.append('facebook', $('#f_fb').value.trim());
   const photoUrl = $('#f_photo').value.trim();
   if (photoUrl && !photoUrl.startsWith('https://')) { toast('La URL de la foto debe comenzar con https://', 'error'); return; }
   if (photoUrl) fd.append('photo', photoUrl);
@@ -352,6 +359,8 @@ window.editAlumni = async (id) => {
     <label>Nombre</label><input id="f_name" value="${esc(a.name)}" />
     <label>Año</label><input type="number" id="f_year" value="${a.year}" />
     <label>Descripción</label><textarea id="f_desc">${esc(a.description || '')}</textarea>
+    <label>Instagram</label><input id="f_ig" value="${esc(a.instagram || '')}" />
+    <label>Facebook</label><input id="f_fb" value="${esc(a.facebook || '')}" />
     <label>Foto (URL)</label><input id="f_photo" value="${esc(a.photo)}" />
     <label>Cambiar imagen</label><input type="file" id="f_file" />
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeM()">Cancelar</button>
@@ -362,6 +371,8 @@ window.saveAlumni = async (id) => {
   fd.append('name', $('#f_name').value);
   fd.append('year', $('#f_year').value);
   fd.append('description', $('#f_desc').value);
+  fd.append('instagram', $('#f_ig').value.trim());
+  fd.append('facebook', $('#f_fb').value.trim());
   const photoUrl = $('#f_photo').value.trim();
   if (photoUrl && !photoUrl.startsWith('https://')) { toast('La URL de la foto debe comenzar con https://', 'error'); return; }
   if (photoUrl) fd.append('photo', photoUrl);

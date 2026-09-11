@@ -199,7 +199,7 @@ app.get('/api/artisans', async (req, res) => {
 });
 
 app.post('/api/artisans', authenticate, requireAdmin, uploadImage.single('photo'), async (req, res) => {
-  const { name, specialty, description } = req.body;
+  const { name, specialty, description, instagram, facebook } = req.body;
   let photo = req.body.photo || '';
   if (req.file) {
     try {
@@ -210,14 +210,14 @@ app.post('/api/artisans', authenticate, requireAdmin, uploadImage.single('photo'
     }
   }
   const result = await pool.query(
-    'INSERT INTO artisans (name, specialty, description, photo) VALUES ($1,$2,$3,$4) RETURNING *',
-    [name, specialty, description, photo]
+    'INSERT INTO artisans (name, specialty, description, photo, instagram, facebook) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
+    [name, specialty, description, photo, instagram || '', facebook || '']
   );
   res.json(result.rows[0]);
 });
 
 app.put('/api/artisans/:id', authenticate, requireAdmin, uploadImage.single('photo'), async (req, res) => {
-  const { name, specialty, description } = req.body;
+  const { name, specialty, description, instagram, facebook } = req.body;
   let photo = req.body.photo || null;
   if (req.file) {
     try {
@@ -229,11 +229,11 @@ app.put('/api/artisans/:id', authenticate, requireAdmin, uploadImage.single('pho
   }
   let query, params;
   if (photo !== null) {
-    query = 'UPDATE artisans SET name=$1, specialty=$2, description=$3, photo=$4 WHERE id=$5 RETURNING *';
-    params = [name, specialty, description, photo, req.params.id];
+    query = 'UPDATE artisans SET name=$1, specialty=$2, description=$3, photo=$4, instagram=$5, facebook=$6 WHERE id=$7 RETURNING *';
+    params = [name, specialty, description, photo, instagram || '', facebook || '', req.params.id];
   } else {
-    query = 'UPDATE artisans SET name=$1, specialty=$2, description=$3 WHERE id=$4 RETURNING *';
-    params = [name, specialty, description, req.params.id];
+    query = 'UPDATE artisans SET name=$1, specialty=$2, description=$3, instagram=$4, facebook=$5 WHERE id=$6 RETURNING *';
+    params = [name, specialty, description, instagram || '', facebook || '', req.params.id];
   }
   const result = await pool.query(query, params);
   res.json(result.rows[0]);
@@ -254,7 +254,7 @@ app.get('/api/alumni', async (req, res) => {
 });
 
 app.post('/api/alumni', authenticate, requireAdmin, uploadImage.single('photo'), async (req, res) => {
-  const { name, year, description } = req.body;
+  const { name, year, description, instagram, facebook } = req.body;
   let photo = req.body.photo || '';
   if (req.file) {
     try {
@@ -265,14 +265,14 @@ app.post('/api/alumni', authenticate, requireAdmin, uploadImage.single('photo'),
     }
   }
   const result = await pool.query(
-    'INSERT INTO alumni (name, year, description, photo) VALUES ($1,$2,$3,$4) RETURNING *',
-    [name, year, description, photo]
+    'INSERT INTO alumni (name, year, description, photo, instagram, facebook) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
+    [name, year, description, photo, instagram || '', facebook || '']
   );
   res.json(result.rows[0]);
 });
 
 app.put('/api/alumni/:id', authenticate, requireAdmin, uploadImage.single('photo'), async (req, res) => {
-  const { name, year, description } = req.body;
+  const { name, year, description, instagram, facebook } = req.body;
   let photo = req.body.photo || null;
   if (req.file) {
     try {
@@ -284,11 +284,11 @@ app.put('/api/alumni/:id', authenticate, requireAdmin, uploadImage.single('photo
   }
   let query, params;
   if (photo !== null) {
-    query = 'UPDATE alumni SET name=$1, year=$2, description=$3, photo=$4 WHERE id=$5 RETURNING *';
-    params = [name, year, description, photo, req.params.id];
+    query = 'UPDATE alumni SET name=$1, year=$2, description=$3, photo=$4, instagram=$5, facebook=$6 WHERE id=$7 RETURNING *';
+    params = [name, year, description, photo, instagram || '', facebook || '', req.params.id];
   } else {
-    query = 'UPDATE alumni SET name=$1, year=$2, description=$3 WHERE id=$4 RETURNING *';
-    params = [name, year, description, req.params.id];
+    query = 'UPDATE alumni SET name=$1, year=$2, description=$3, instagram=$4, facebook=$5 WHERE id=$6 RETURNING *';
+    params = [name, year, description, instagram || '', facebook || '', req.params.id];
   }
   const result = await pool.query(query, params);
   res.json(result.rows[0]);
