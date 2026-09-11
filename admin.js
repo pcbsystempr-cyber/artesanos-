@@ -157,7 +157,7 @@ window.openAdd = function (tab) {
     <button class="btn btn-primary" onclick="addArtisan()">Crear</button></div>`);
   if (tab === 'alumni') openModal(`<h3>Nuevo Artesano Anterior</h3>
     <label>Nombre</label><input id="f_name" />
-    <label>Año</label><input type="number" id="f_year" />
+    <label>Año</label><input type="number" id="f_year" required />
     <label>Descripción</label><textarea id="f_desc"></textarea>
     <label>Instagram (usuario o URL)</label><input id="f_ig" placeholder="@usuario o https://instagram.com/usuario" />
     <label>Facebook (URL o usuario)</label><input id="f_fb" placeholder="https://facebook.com/usuario" />
@@ -196,7 +196,12 @@ async function postForm(url, fields, fileField, fieldName) {
   const fd = new FormData();
   fields.forEach(([k, v]) => fd.append(k, v));
   if (fileField && $(fileField)?.files[0]) fd.append(fieldName || fileField, $(fileField).files[0]);
-  return fetch(url, { ...authHeader(), method: 'POST', body: fd, headers: { 'Authorization': 'Bearer ' + token } }).then((r) => r.json());
+  const res = await fetch(url, { ...authHeader(), method: 'POST', body: fd, headers: { 'Authorization': 'Bearer ' + token } });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Error desconocido' }));
+    throw new Error(err.error || 'Error al guardar');
+  }
+  return res.json();
 }
 window.addAnnouncement = async () => {
   await API('/api/announcements', { ...authHeader(), method: 'POST', body: JSON.stringify({ title: $('#f_title').value, body: $('#f_body').value, published_at: $('#f_date').value, is_urgent: $('#f_urgent').checked }) });
@@ -211,10 +216,16 @@ window.addArtisan = async () => {
   closeM(); toast('Artesano creado', 'success'); renderArtisans();
 };
 window.addAlumni = async () => {
+  const year = $('#f_year').value.trim();
+  if (!year) { toast('El año es obligatorio', 'error'); return; }
   const photo = $('#f_photo').value.trim();
   if (photo && !photo.startsWith('https://')) { toast('La URL de la foto debe comenzar con https://', 'error'); return; }
-  await postForm('/api/alumni', [['name', $('#f_name').value], ['year', $('#f_year').value], ['description', $('#f_desc').value], ['instagram', $('#f_ig').value.trim()], ['facebook', $('#f_fb').value.trim()], ['photo', photo]], '#f_file', 'photo');
-  closeM(); toast('Artesano anterior creado', 'success'); renderAlumni();
+  try {
+    await postForm('/api/alumni', [['name', $('#f_name').value], ['year', year], ['description', $('#f_desc').value], ['instagram', $('#f_ig').value.trim()], ['facebook', $('#f_fb').value.trim()], ['photo', photo]], '#f_file', 'photo');
+    closeM(); toast('Artesano anterior creado', 'success'); renderAlumni();
+  } catch (err) {
+    toast(err.message || 'Error al guardar', 'error');
+  }
 };
 window.addGallery = async () => {
   const url = $('#f_image_url').value.trim();
