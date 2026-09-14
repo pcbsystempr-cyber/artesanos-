@@ -274,16 +274,72 @@
   transition: all var(--trans);
 }
 .doc-list li:last-child { border-bottom: none; }
-.doc-list a {
+.doc-item-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
   color: var(--pastel-purple);
   font-weight: 600;
+  cursor: pointer;
+  font-size: 1rem;
   transition: color var(--trans);
 }
-.doc-list a:hover { color: var(--pastel-coral); }
+.doc-item-btn:hover { color: var(--pastel-coral); }
 
 [data-theme="dark"] .doc-list li { border-color: var(--card-border); }
-[data-theme="dark"] .doc-list a { color: var(--pastel-lavender); }
-[data-theme="dark"] .doc-list a:hover { color: var(--pastel-coral); }
+[data-theme="dark"] .doc-item-btn { color: var(--pastel-lavender); }
+[data-theme="dark"] .doc-item-btn:hover { color: var(--pastel-coral); }
+
+/* ---------- Document Viewer ---------- */
+.doc-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  padding: 1.2rem;
+}
+.doc-viewer-content {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-hover);
+  width: min(900px, 95%);
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+.doc-viewer-close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 10;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  color: var(--text-dark);
+  border-radius: 50%;
+  width: 2rem;
+  height: 2rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+.doc-viewer-close:hover { background: var(--pastel-coral); color: #fff; }
+#docViewerBody {
+  padding: 1rem;
+  overflow: auto;
+  flex: 1;
+  display: grid;
+  place-items: center;
+}
+#docViewerBody img { max-width: 100%; max-height: 75vh; border-radius: 12px; }
+#docViewerBody iframe { width: 100%; height: 75vh; border: 0; border-radius: 12px; }
+
+[data-theme="dark"] .doc-viewer-content { background: var(--card); border-color: var(--card-border); }
+[data-theme="dark"] .doc-viewer-close { background: var(--card-bg); color: var(--texto); }
 
 /* ---------- Calendar ---------- */
 .cal-grid {

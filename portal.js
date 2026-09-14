@@ -118,12 +118,33 @@ async function loadNotices() {
 async function loadDocuments() {
   try {
     const data = await API('/api/documents');
-    $('#documents').innerHTML = data.map((d) => `<li><a href="/uploads/${esc(d.filename)}" target="_blank" download>📄 ${esc(d.title)}</a></li>`).join('') || '<li>No hay documentos.</li>';
+    $('#documents').innerHTML = data.map((d) => `<li><button class="doc-item-btn" data-url="${esc(d.filename)}" data-title="${esc(d.title)}">📄 ${esc(d.title)}</button></li>`).join('') || '<li>No hay documentos.</li>';
+    document.querySelectorAll('.doc-item-btn').forEach((btn) => {
+      btn.addEventListener('click', () => openDocViewer(btn.dataset.url, btn.dataset.title));
+    });
   } catch (err) {
     console.error('Error cargando documentos:', err);
     $('#documents').innerHTML = '<li class="error">No se pudieron cargar los documentos.</li>';
   }
 }
+
+// ---------- Visor de documentos ----------
+function openDocViewer(url, title) {
+  const viewer = $('#docViewer');
+  const body = $('#docViewerBody');
+  const lower = (url || '').toLowerCase();
+  body.innerHTML = '';
+  if (/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(lower)) {
+    body.innerHTML = `<img src="${esc(url)}" alt="${esc(title)}" />`;
+  } else if (/\.pdf$/i.test(lower)) {
+    body.innerHTML = `<iframe src="${esc(url)}" title="${esc(title)}"></iframe>`;
+  } else {
+    body.innerHTML = `<a class="btn btn-primary" href="${esc(url)}" target="_blank" rel="noopener">Descargar / Abrir ${esc(title)}</a>`;
+  }
+  viewer.classList.remove('hidden');
+}
+$('#docViewerClose')?.addEventListener('click', () => $('#docViewer').classList.add('hidden'));
+$('#docViewer')?.addEventListener('click', (e) => { if (e.target === $('#docViewer')) $('#docViewer').classList.add('hidden'); });
 
 // ---------- Cargar Calendario ----------
 async function loadCalendar() {
