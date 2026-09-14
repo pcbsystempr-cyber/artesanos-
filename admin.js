@@ -462,7 +462,7 @@ window.saveNotice = async (id) => {
 async function renderDocuments() {
   const data = await API('/api/documents');
   $('#panel').innerHTML = data.map((d) => `
-    <div class="list-item"><div><h4>${esc(d.title)}</h4><a href="/uploads/${esc(d.filename)}" target="_blank">📄 Ver/Descargar</a></div>
+    <div class="list-item"><div><h4>${esc(d.title)}</h4><a href="${esc(d.filename)}" target="_blank">📄 Ver/Descargar</a></div>
       <div class="list-actions"><button class="btn btn-danger btn-sm" onclick="del('/api/documents', ${d.id}, renderDocuments)">Eliminar</button></div></div>`).join('') || '<p>No hay documentos.</p>';
 }
 

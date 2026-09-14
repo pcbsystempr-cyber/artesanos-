@@ -144,6 +144,7 @@ Abre:
 - Las imágenes se optimizan con `loading="lazy"`.
 - El buscador de artesanos filtra por nombre y especialidad en el cliente.
 - Toda la entrada de usuario se escapa para evitar XSS en el render.
+- En Supabase Storage debes crear el bucket `documents` (junto a `photos`) para alojar los archivos subidos desde el panel de administración. Ambos buckets deben tener la política RLS adecuada para permitir subidas desde el backend usando la service key.
 
 © Organización de Artesanos y Empresarios Juveniles PCB · Puerto Rico 🇵🇷
 # Artesanos

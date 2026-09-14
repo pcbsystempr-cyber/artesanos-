@@ -42,14 +42,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 const imageStorage = multer.memoryStorage();
 const uploadImage = multer({ storage: imageStorage, limits: { fileSize: 5 * 1024 * 1024 } });
 
-const documentStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, path.join(__dirname, 'uploads')),
-  filename: (req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, unique + path.extname(file.originalname));
-  },
-});
-const uploadDocument = multer({ storage: documentStorage, limits: { fileSize: 5 * 1024 * 1024 } });
+const documentStorage = multer.memoryStorage();
+const uploadDocument = multer({ storage: documentStorage, limits: { fileSize: 10 * 1024 * 1024 } });
 
 async function uploadToSupabaseStorage(file, bucket = 'photos') {
   const ext = path.extname(file.originalname || '');
@@ -376,10 +370,15 @@ app.get('/api/documents', async (req, res) => {
 
 app.post('/api/documents', authenticate, requireAdmin, uploadDocument.single('file'), async (req, res) => {
   const { title } = req.body;
-  const filename = req.file ? req.file.filename : '';
-  if (!filename) return res.status(400).json({ error: 'Archivo requerido' });
-  const result = await pool.query('INSERT INTO documents (title, filename) VALUES ($1,$2) RETURNING *', [title, filename]);
-  res.json(result.rows[0]);
+  if (!req.file) return res.status(400).json({ error: 'Archivo requerido' });
+  try {
+    const fileUrl = await uploadToSupabaseStorage(req.file, 'documents');
+    const result = await pool.query('INSERT INTO documents (title, filename) VALUES ($1,$2) RETURNING *', [title, fileUrl]);
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error subiendo documento:', err.message);
+    res.status(500).json({ error: 'No se pudo subir el documento' });
+  }
 });
 
 app.delete('/api/documents/:id', authenticate, requireAdmin, async (req, res) => {

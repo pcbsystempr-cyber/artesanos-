@@ -5,7 +5,10 @@
 const API = (url, opts) => fetch(url, {
   ...opts,
   headers: { 'Content-Type': 'application/json', ...(opts?.headers || {}) },
-}).then((r) => r.json());
+}).then((r) => {
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+});
 
 const $ = (s) => document.querySelector(s);
 let token = localStorage.getItem('artisanToken');
@@ -24,16 +27,18 @@ function authHeader() { return { headers: { 'Authorization': 'Bearer ' + token, 
 $('#loginForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   try {
-    const res = await API('/api/login', {
+    const res = await fetch('/api/login', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: $('#username').value, password: $('#password').value }),
     });
-    if (res.token) {
-      token = res.token;
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.token) {
+      token = data.token;
       localStorage.setItem('artisanToken', token);
       showPortal();
     } else {
-      toast(res.error || 'Acceso denegado', 'error');
+      toast(data.error || 'Acceso denegado', 'error');
     }
   } catch (err) {
     console.error('Error en login:', err);
@@ -69,48 +74,69 @@ function showPortal() {
 
 // ---------- Cargar Feria ----------
 async function loadFair() {
-  const f = await API('/api/craft-fair');
-  $('#fairContent').innerHTML = `
-    <h3 class="fair-title">${esc(f.title || 'Por confirmar')}</h3>
-    <p><strong>📅 Fecha:</strong> ${f.event_date || '—'}</p>
-    <p><strong>🕒 Hora:</strong> ${esc(f.event_time || '—')}</p>
-    <p><strong>📍 Lugar:</strong> ${esc(f.location || '—')}</p>
-    <p style="margin-top:0.6rem;">${esc(f.description || '')}</p>
-     <p style="margin-top:0.6rem;"><strong>Requisitos para participar:</strong> ${esc(f.requirements || '—')}</p>`;
+  try {
+    const f = await API('/api/craft-fair');
+    $('#fairContent').innerHTML = `
+      <h3 class="fair-title">${esc(f.title || 'Por confirmar')}</h3>
+      <p><strong>📅 Fecha:</strong> ${f.event_date || '—'}</p>
+      <p><strong>🕒 Hora:</strong> ${esc(f.event_time || '—')}</p>
+      <p><strong>📍 Lugar:</strong> ${esc(f.location || '—')}</p>
+      <p style="margin-top:0.6rem;">${esc(f.description || '')}</p>
+       <p style="margin-top:0.6rem;"><strong>Requisitos para participar:</strong> ${esc(f.requirements || '—')}</p>`;
+  } catch (err) {
+    console.error('Error cargando feria:', err);
+    $('#fairContent').innerHTML = '<p class="error">No se pudo cargar la información de la feria.</p>';
+  }
 }
 
 // ---------- Cargar Avisos ----------
 async function loadNotices() {
-  const data = await API('/api/artisan-notices');
-  $('#notices').innerHTML = data.map((n) => `
-    <div class="notice ${n.is_urgent ? 'urgent' : ''}">
-      <strong>${esc(n.title)} ${n.is_urgent ? '⚠️' : ''}</strong>
-      <p>${esc(n.body)}</p>
-      <span class="date">📅 ${n.published_at || ''}</span>
-    </div>`).join('') || '<p>No hay avisos.</p>';
+  try {
+    const data = await API('/api/artisan-notices');
+    $('#notices').innerHTML = data.map((n) => `
+      <div class="notice ${n.is_urgent ? 'urgent' : ''}">
+        <strong>${esc(n.title)} ${n.is_urgent ? '⚠️' : ''}</strong>
+        <p>${esc(n.body)}</p>
+        <span class="date">📅 ${n.published_at || ''}</span>
+      </div>`).join('') || '<p>No hay avisos.</p>';
+  } catch (err) {
+    console.error('Error cargando avisos:', err);
+    $('#notices').innerHTML = '<p class="error">No se pudieron cargar los avisos.</p>';
+  }
 }
 
 // ---------- Cargar Documentos ----------
 async function loadDocuments() {
-  const data = await API('/api/documents');
-  $('#documents').innerHTML = data.map((d) => `<li><a href="/uploads/${esc(d.filename)}" target="_blank" download>📄 ${esc(d.title)}</a></li>`).join('') || '<li>No hay documentos.</li>';
+  try {
+    const data = await API('/api/documents');
+    $('#documents').innerHTML = data.map((d) => `<li><a href="${esc(d.filename)}" target="_blank" download>📄 ${esc(d.title)}</a></li>`).join('') || '<li>No hay documentos.</li>';
+  } catch (err) {
+    console.error('Error cargando documentos:', err);
+    $('#documents').innerHTML = '<li class="error">No se pudieron cargar los documentos.</li>';
+  }
 }
 
 // ---------- Cargar Calendario ----------
 async function loadCalendar() {
-  const data = await API('/api/activities');
-  $('#calendar').innerHTML = data.map((a) => `
-    <div class="cal-item">
-      <div class="date">📅 ${a.activity_date || ''}</div>
-      <strong>${esc(a.title)}</strong>
-      <p class="cal-desc">${esc(a.description || '')}</p>
-    </div>`).join('') || '<p>Sin actividades programadas.</p>';
+  try {
+    const data = await API('/api/activities');
+    $('#calendar').innerHTML = data.map((a) => `
+      <div class="cal-item">
+        <div class="date">📅 ${a.activity_date || ''}</div>
+        <strong>${esc(a.title)}</strong>
+        <p class="cal-desc">${esc(a.description || '')}</p>
+      </div>`).join('') || '<p>Sin actividades programadas.</p>';
+  } catch (err) {
+    console.error('Error cargando calendario:', err);
+    $('#calendar').innerHTML = '<p class="error">No se pudo cargar el calendario.</p>';
+  }
 }
 
 // ---------- Init ----------
 if (token) {
-  API('/api/me', authHeader()).then((r) => {
-    if (r.user) showPortal();
+  fetch('/api/me', { ...authHeader() }).then(async (r) => {
+    const data = await r.json().catch(() => ({}));
+    if (r.ok && data.user) showPortal();
     else { localStorage.removeItem('artisanToken'); $('#loginView').classList.remove('hidden'); }
   }).catch(() => { $('#loginView').classList.remove('hidden'); });
 } else {
