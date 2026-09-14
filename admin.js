@@ -241,7 +241,7 @@ window.addGallery = async () => {
   closeM(); toast('Foto guardada', 'success'); renderGallery();
 };
 window.addNotice = () => post('/api/artisan-notices', { title: $('#f_title').value, body: $('#f_body').value, published_at: $('#f_date').value, is_urgent: $('#f_urgent').checked }, renderNotices);
-window.addDocument = async () => { await postForm('/api/documents', [['title', $('#f_title').value]], '#f_file'); closeM(); toast('Documento subido', 'success'); renderDocuments(); };
+window.addDocument = async () => { await postForm('/api/documents', [['title', $('#f_title').value]], '#f_file', 'file'); closeM(); toast('Documento subido', 'success'); renderDocuments(); };
 window.addActivity = () => post('/api/activities', { title: $('#f_title').value, activity_date: $('#f_date').value, description: $('#f_desc').value }, renderActivities);
 
 async function post(url, body, after) {
