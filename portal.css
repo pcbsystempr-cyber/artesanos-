@@ -5,6 +5,7 @@
 @import url('styles.css');
 
 /* ---------- Auth ---------- */
+.hidden { display: none !important; }
 .auth-view {
   min-height: 100vh;
   display: grid;

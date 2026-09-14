@@ -27,17 +27,24 @@ function authHeader() { return { headers: { 'Authorization': 'Bearer ' + token, 
 $('#loginForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   try {
+    const username = $('#username').value;
+    const password = $('#password').value;
+    console.log('Intentando login con usuario:', username);
     const res = await fetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: $('#username').value, password: $('#password').value }),
+      body: JSON.stringify({ username, password }),
     });
+    console.log('Login response status:', res.status);
     const data = await res.json().catch(() => ({}));
+    console.log('Login response data:', data);
     if (res.ok && data.token) {
       token = data.token;
       localStorage.setItem('artisanToken', token);
+      console.log('Login exitoso, token guardado');
       showPortal();
     } else {
+      console.warn('Login fallido:', data.error || 'Sin token');
       toast(data.error || 'Acceso denegado', 'error');
     }
   } catch (err) {
@@ -66,9 +73,11 @@ $('#themeToggle')?.addEventListener('click', () => {
 });
 
 function showPortal() {
+  console.log('Mostrando portal...');
   if (localStorage.getItem('ptheme') === 'dark') { document.documentElement.setAttribute('data-theme', 'dark'); $('#themeToggle').textContent = '☀️'; }
   $('#loginView').classList.add('hidden');
   $('#portalView').classList.remove('hidden');
+  console.log('Portal visible, cargando datos...');
   loadFair(); loadNotices(); loadDocuments(); loadCalendar();
 }
 
@@ -109,7 +118,7 @@ async function loadNotices() {
 async function loadDocuments() {
   try {
     const data = await API('/api/documents');
-    $('#documents').innerHTML = data.map((d) => `<li><a href="${esc(d.filename)}" target="_blank" download>📄 ${esc(d.title)}</a></li>`).join('') || '<li>No hay documentos.</li>';
+    $('#documents').innerHTML = data.map((d) => `<li><a href="/uploads/${esc(d.filename)}" target="_blank" download>📄 ${esc(d.title)}</a></li>`).join('') || '<li>No hay documentos.</li>';
   } catch (err) {
     console.error('Error cargando documentos:', err);
     $('#documents').innerHTML = '<li class="error">No se pudieron cargar los documentos.</li>';
