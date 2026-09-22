@@ -192,10 +192,47 @@ window.openAdd = function (tab) {
 };
 
 // Funciones de creación (POST con o sin archivo)
+function resizeImage(file, maxDim = 1200) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > height && width > maxDim) {
+        height = Math.round((height * maxDim) / width);
+        width = maxDim;
+      } else if (height > maxDim) {
+        width = Math.round((width * maxDim) / height);
+        height = maxDim;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => (blob ? resolve(new File([blob], file.name, { type: file.type })) : reject(new Error('No se pudo procesar la imagen'))),
+        file.type,
+        0.85
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Error cargando imagen')); };
+    img.src = url;
+  });
+}
+
 async function postForm(url, fields, fileField, fieldName) {
   const fd = new FormData();
   fields.forEach(([k, v]) => fd.append(k, v));
-  if (fileField && $(fileField)?.files[0]) fd.append(fieldName || fileField, $(fileField).files[0]);
+  if (fileField && $(fileField)?.files[0]) {
+    try {
+      const resized = await resizeImage($(fileField).files[0]);
+      fd.append(fieldName || fileField, resized);
+    } catch (err) {
+      fd.append(fieldName || fileField, $(fileField).files[0]);
+    }
+  }
   const res = await fetch(url, { ...authHeader(), method: 'POST', body: fd, headers: { 'Authorization': 'Bearer ' + token } });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Error desconocido' }));
@@ -235,7 +272,14 @@ window.addGallery = async () => {
   const fd = new FormData();
   fd.append('title', $('#f_title').value);
   if (url) fd.append('image', url);
-  if (file) fd.append('image', file);
+  if (file) {
+    try {
+      const resized = await resizeImage(file);
+      fd.append('image', resized);
+    } catch (err) {
+      fd.append('image', file);
+    }
+  }
   const res = await fetch('/api/gallery', { headers: { 'Authorization': 'Bearer ' + token }, method: 'POST', body: fd });
   if (!res.ok) { const err = await res.json().catch(() => ({ error: 'Error desconocido' })); toast(err.error || 'Error al guardar', 'error'); return; }
   closeM(); toast('Foto guardada', 'success'); renderGallery();
@@ -343,7 +387,14 @@ window.saveArtisan = async (id) => {
   const photoUrl = $('#f_photo').value.trim();
   if (photoUrl && !photoUrl.startsWith('https://')) { toast('La URL de la foto debe comenzar con https://', 'error'); return; }
   if (photoUrl) fd.append('photo', photoUrl);
-  if ($('#f_file').files[0]) fd.append('photo', $('#f_file').files[0]);
+  if ($('#f_file').files[0]) {
+    try {
+      const resized = await resizeImage($('#f_file').files[0]);
+      fd.append('photo', resized);
+    } catch (err) {
+      fd.append('photo', $('#f_file').files[0]);
+    }
+  }
   const res = await fetch('/api/artisans/' + id, { method: 'PUT', body: fd, headers: { 'Authorization': 'Bearer ' + token } });
   if (!res.ok) { const err = await res.json().catch(() => ({ error: 'Error desconocido' })); toast(err.error || 'Error al actualizar', 'error'); return; }
   closeM(); toast('Actualizado', 'success'); renderArtisans();
@@ -387,7 +438,14 @@ window.saveAlumni = async (id) => {
   const photoUrl = $('#f_photo').value.trim();
   if (photoUrl && !photoUrl.startsWith('https://')) { toast('La URL de la foto debe comenzar con https://', 'error'); return; }
   if (photoUrl) fd.append('photo', photoUrl);
-  if ($('#f_file').files[0]) fd.append('photo', $('#f_file').files[0]);
+  if ($('#f_file').files[0]) {
+    try {
+      const resized = await resizeImage($('#f_file').files[0]);
+      fd.append('photo', resized);
+    } catch (err) {
+      fd.append('photo', $('#f_file').files[0]);
+    }
+  }
   const res = await fetch('/api/alumni/' + id, { method: 'PUT', body: fd, headers: { 'Authorization': 'Bearer ' + token } });
   if (!res.ok) { const err = await res.json().catch(() => ({ error: 'Error desconocido' })); toast(err.error || 'Error al actualizar', 'error'); return; }
   closeM(); toast('Actualizado', 'success'); renderAlumni();

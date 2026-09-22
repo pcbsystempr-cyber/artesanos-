@@ -5,7 +5,7 @@
 
 :root {
   --pastel-pink: #ffb3c1;
-  --pastel-purple: #c9b1ff;
+  --pastel-purple: #a78bfa;
   --pastel-blue: #a0d2f0;
   --pastel-green: #b5e8b5;
   --pastel-yellow: #fff5b8;
@@ -38,7 +38,7 @@
 
 [data-theme="dark"] {
   --pastel-pink: #ffb3c1;
-  --pastel-purple: #c9b1ff;
+  --pastel-purple: #a78bfa;
   --pastel-blue: #a0d2f0;
   --pastel-green: #b5e8b5;
   --pastel-yellow: #fff5b8;
