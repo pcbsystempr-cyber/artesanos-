@@ -259,3 +259,44 @@ LOADERS.forEach(([fn, sel]) => {
     if (el) el.innerHTML = '<p style="color:#b00020">⚠️ No se pudo cargar. Verifica que el servidor y la base de datos estén activos.</p>';
   });
 });
+
+// ---------- Lightbox de galería ----------
+(function initLightbox() {
+  const lightbox = $('#lightbox');
+  const lightboxImg = $('#lightboxImg');
+  const lightboxClose = $('#lightboxClose');
+
+  function openLightbox(src, alt) {
+    lightboxImg.src = src;
+    lightboxImg.alt = alt || '';
+    lightbox.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeLightbox() {
+    lightbox.classList.add('hidden');
+    lightboxImg.src = '';
+    document.body.style.overflow = '';
+  }
+
+  $('#galleryGrid').addEventListener('click', (e) => {
+    const img = e.target.closest('img');
+    if (!img) return;
+    openLightbox(img.src, img.alt);
+  });
+
+  lightboxClose.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeLightbox();
+  });
+
+  lightbox.addEventListener('click', (e) => {
+    if (e.target === lightbox) closeLightbox();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !lightbox.classList.contains('hidden')) {
+      closeLightbox();
+    }
+  });
+})();
