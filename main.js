@@ -1,10 +1,12 @@
+// ============================================================
+//  Sitio público - lee directamente de Supabase (RLS: lectura pública)
+// ============================================================
+// Script clásico (no módulo) para que funcione abriendo el HTML con doble clic.
+// Usa db / api / uploadFile / signIn / signOut / getCurrentUser de supabase/supabaseClient.js.
+(() => {
+'use strict';
 
 const $ = (sel) => document.querySelector(sel);
-const api = async (url, opts) => {
-  const r = await fetch(url, opts);
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-  return r.json();
-};
 
 function toast(msg, type = 'info') {
   const el = document.createElement('div');
@@ -95,7 +97,7 @@ $('#year').textContent = new Date().getFullYear();
 
 // ---------- Cargar ANUNCIOS ----------
 async function loadAnnouncements() {
-  const data = await api('/api/announcements');
+  const data = await api.announcements();
   const grid = $('#announceGrid');
   if (!data.length) { grid.innerHTML = '<p>No hay anuncios por el momento.</p>'; return; }
   grid.innerHTML = data.map((a) => `
@@ -110,7 +112,7 @@ async function loadAnnouncements() {
 // ---------- Cargar INFO DEL PROGRAMA ----------
 const ICONS = { history: '📜', objectives: '🎯', benefits: '🌟', activities: '🛠️' };
 async function loadProgramInfo() {
-  const data = await api('/api/program-info');
+  const data = await api.programInfo();
   const grid = $('#infoGrid');
   grid.innerHTML = data.map((i) => `
     <div class="info-card reveal">
@@ -123,7 +125,7 @@ async function loadProgramInfo() {
 
 // ---------- Cargar REQUISITOS ----------
 async function loadRequirements() {
-  const data = await api('/api/requirements');
+  const data = await api.requirements();
   const labels = { documents: 'Documentos necesarios', criteria: 'Criterios de selección', dates: 'Fechas de inscripción' };
   const groups = {};
   data.forEach((r) => { (groups[r.category] = groups[r.category] || []).push(r); });
@@ -139,7 +141,7 @@ async function loadRequirements() {
 // ---------- Cargar ARTESANOS ACTUALES ----------
 let allArtisans = [];
 async function loadArtisans() {
-  allArtisans = await api('/api/artisans');
+  allArtisans = await api.artisans();
   renderArtisans(allArtisans);
 }
 function renderArtisans(list) {
@@ -162,13 +164,13 @@ function renderArtisans(list) {
 $('#artisanSearch')?.addEventListener('input', (e) => {
   const q = e.target.value.toLowerCase();
   renderArtisans(allArtisans.filter((a) =>
-    a.name.toLowerCase().includes(q) || a.specialty.toLowerCase().includes(q)
+    (a.name || '').toLowerCase().includes(q) || (a.specialty || '').toLowerCase().includes(q)
   ));
 });
 
 // ---------- Cargar ARTESANOS ANTERIORES ----------
 async function loadAlumni() {
-  const data = await api('/api/alumni');
+  const data = await api.alumni();
   const grid = $('#alumniGrid');
   grid.innerHTML = data.map((a) => `
     <article class="art-card reveal">
@@ -185,7 +187,7 @@ async function loadAlumni() {
 
 // ---------- Cargar GALERÍA ----------
 async function loadGallery() {
-  const data = await api('/api/gallery');
+  const data = await api.gallery();
   const grid = $('#galleryGrid');
   grid.innerHTML = data.map((g) => `
     <figure class="reveal">
@@ -256,7 +258,7 @@ LOADERS.forEach(([fn, sel]) => {
   fn().catch((err) => {
     console.error('Error cargando ' + sel + ':', err);
     const el = $(sel);
-    if (el) el.innerHTML = '<p style="color:#b00020">⚠️ No se pudo cargar. Verifica que el servidor y la base de datos estén activos.</p>';
+    if (el) el.innerHTML = '<p style="color:#b00020">⚠️ No se pudo cargar. Verifica la conexión con Supabase.</p>';
   });
 });
 
@@ -299,4 +301,5 @@ LOADERS.forEach(([fn, sel]) => {
       closeLightbox();
     }
   });
+})();
 })();

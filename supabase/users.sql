@@ -1,22 +1,32 @@
 -- ============================================================
---  Usuarios por defecto para Supabase
---  Genera los hashes bcrypt directamente en PostgreSQL usando
---  la extensión pgcrypto (disponible en Supabase).
---  Contraseñas por defecto (.env.example):
---    admin      / admin123
---    artesano   / artesano123
+--  Usuarios y roles (Supabase Auth)
+--  Sustituye a setup.js + la tabla "users" con bcrypt.
 --
---  Ejecuta en el SQL Editor de Supabase tras schema.sql.
---  Si ya tienes pgcrypto habilitado (por defecto en Supabase),
---  esto funcionará sin dependencias externas.
+--  PASO 1 (Dashboard de Supabase > Authentication > Users > Add user):
+--    Crea los usuarios con "Auto Confirm User" marcado:
+--      admin@artesanos.local      (contraseña segura)
+--      artesano@artesanos.local   (contraseña segura)
+--    En la web se inicia sesión con "admin" / "artesano": el
+--    frontend añade "@artesanos.local" (AUTH_EMAIL_DOMAIN en env.js).
+--    También se puede escribir el email completo.
+--
+--  PASO 2 (Authentication > Providers > Email):
+--    Desactiva "Allow new users to sign up" para que nadie pueda
+--    registrarse por su cuenta. (Aunque lo hicieran, sin fila en
+--    profiles no tendrían ningún permiso.)
+--
+--  PASO 3: ejecuta este script en el SQL Editor para asignar roles.
 -- ============================================================
 
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+INSERT INTO public.profiles (id, username, role)
+SELECT id, split_part(email, '@', 1), 'admin'
+FROM auth.users WHERE email = 'admin@artesanos.local'
+ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, username = EXCLUDED.username;
 
-INSERT INTO public.users (username, password_hash, role)
-VALUES ('admin', crypt('admin123', gen_salt('bf', 10)), 'admin')
-ON CONFLICT (username) DO NOTHING;
+INSERT INTO public.profiles (id, username, role)
+SELECT id, split_part(email, '@', 1), 'artisan'
+FROM auth.users WHERE email = 'artesano@artesanos.local'
+ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, username = EXCLUDED.username;
 
-INSERT INTO public.users (username, password_hash, role)
-VALUES ('artesano', crypt('artesano123', gen_salt('bf', 10)), 'artisan')
-ON CONFLICT (username) DO NOTHING;
+-- Comprobación
+SELECT p.username, p.role, u.email FROM public.profiles p JOIN auth.users u ON u.id = p.id;

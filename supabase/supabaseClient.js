@@ -1,195 +1,165 @@
 // ============================================================
-//  Cliente y utilidades de Supabase
-//  Centraliza TODA la configuración e instrucciones relacionadas
-//  con la base de datos de Supabase (conexión, ejecución de
-//  scripts SQL y cliente para consultas).
+//  Cliente de Supabase para el NAVEGADOR (frontend-only)
+//  Sustituye a server.js + supabase/db.js + supabase/auth.js.
 //
-//  Uso en backend (Node):
-//    const supabase = require('./supabaseClient');
-//    await supabase.runSchema();   // crea tablas, triggers y RLS
-//    await supabase.runSeed();     // inserta datos de ejemplo
-//    await supabase.runUsers();    // crea usuarios por defecto
-//    const { data } = await supabase.supabaseAdmin.from('announcements').select('*');
-//
-//  El cliente de navegador usa window.supabase (supabase-js v2 por CDN).
+//  Todo acceso a datos pasa por @supabase/supabase-js con la
+//  clave pública (anon). Los permisos los aplica Postgres con
+//  Row Level Security (ver supabase/policies.sql):
+//    - Lectura pública: anuncios, info, requisitos, artesanos,
+//      alumni, galería.
+//    - Lectura para artesanos/admin: feria, avisos, documentos,
+//      actividades.
+//    - Escritura (insert/update/delete + Storage): solo admin.
 // ============================================================
-
-
-require('dotenv').config();
-const fs = require('fs');
-const path = require('path');
-const { Pool } = require('pg');
-
-// ------------------------------------------------------------
-//  Configuración (lee el .env)
-//  Soporta el formato estándar (SUPABASE_ANON_KEY / SUPABASE_SERVICE_KEY)
-//  y el formato de Supabase CLI (SUPABASE_PUBLISHABLE_KEY / SUPABASE_SECRET_KEY).
-// ------------------------------------------------------------
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://cotocvlsdqtglomvenfd.supabase.co';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_8M0ljA29Inn5kF5WfICK3g_3OY1wWsd';
-const SUPABASE_SERVICE_KEY =
-  process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SECRET_KEY || SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvdG9jdmxzZHF0Z2xvbXZlbmZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNTg4NjYsImV4cCI6MjEwMjczNDg2Nn0.k5-k-XErmO9tFtUwM9rSJFW8kLAXT8j2NxCmedPpkUQ';
-
-// DATABASE_URL: si no está definida, se deriva del connection string de Supabase.
-// Formato: postgresql://postgres:[PASSWORD]@db.[PROYECTO].supabase.co:5432/postgres
-function deriveDatabaseUrl() {
-  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
-  if (!SUPABASE_URL) return '';
-  const host = SUPABASE_URL.replace(/^https?:\/\//, '').replace(/\/$/, '');
-  // La SECRET/PUBLISHABLE key no es la contraseña de Postgres. Supabase usa la
-  // contraseña del usuario postgres definida en el dashboard (DB_PASSWORD).
-  const password = process.env.DB_PASSWORD || 'postgres';
-  return `postgresql://postgres:${password}@db.${host}:5432/postgres`;
-}
-const DATABASE_URL = deriveDatabaseUrl();
-
-// ------------------------------------------------------------
-//  Clientes supabase-js
-// ------------------------------------------------------------
-let supabase = null;        // Cliente público (ANON KEY) - respeta RLS
-let supabaseAdmin = null;   // Cliente admin (SERVICE KEY) - salta RLS
-
-function initClients() {
-  try {
-    const { createClient } = require('@supabase/supabase-js');
-    if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-      supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    }
-    if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
-      supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-    }
-  } catch (e) {
-    console.warn('⚠️  @supabase/supabase-js no instalado. Ejecuta: npm install @supabase/supabase-js');
-  }
-  return { supabase, supabaseAdmin };
-}
-initClients();
-
-// ------------------------------------------------------------
-//  Pool de PostgreSQL (para ejecutar scripts SQL crudos en Supabase)
-// ------------------------------------------------------------
-const pool = new Pool({
-  connectionString: DATABASE_URL,
-  ssl: DATABASE_URL ? { rejectUnauthorized: false } : false,
+//  Script clásico: necesita cargarse DESPUÉS de la librería UMD de
+//  supabase-js (window.supabase) y de env.js. Todo lo que se declara
+//  aquí (db, api, uploadFile, signIn, ...) queda disponible para los
+//  scripts que se cargan después (main.js, admin.js, portal.js).
+const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: true,      // la sesión se guarda en localStorage
+    autoRefreshToken: true,    // renueva el JWT automáticamente
+    storageKey: 'artesanos-auth',
+  },
 });
 
 // ------------------------------------------------------------
-//  Scripts SQL (en la carpeta raíz del proyecto)
+//  Utilidades internas
 // ------------------------------------------------------------
-const SCHEMA_SQL = path.join(__dirname, 'schema.sql');
-const SEED_SQL = path.join(__dirname, 'seed.sql');
-const USERS_SQL = path.join(__dirname, 'users.sql');
-// (estos archivos viven junto a este módulo dentro de /supabase)
-
-// Divide un script SQL en sentencias individuales respetando $$ (bloques plpgsql)
-function splitSql(sql) {
-  const statements = [];
-  let current = '';
-  let inDollar = false;
-  let dollarTag = '';
-  let i = 0;
-  while (i < sql.length) {
-    const ch = sql[i];
-    if (!inDollar && ch === '$') {
-      const tagMatch = /^\$[A-Za-z0-9_]*\$/.exec(sql.slice(i));
-      if (tagMatch) {
-        inDollar = true;
-        dollarTag = tagMatch[0];
-        current += tagMatch[0];
-        i += tagMatch[0].length;
-        continue;
-      }
-    }
-    if (inDollar && sql.startsWith(dollarTag, i)) {
-      inDollar = false;
-      current += dollarTag;
-      i += dollarTag.length;
-      continue;
-    }
-    current += ch;
-    if (!inDollar && ch === ';') {
-      const trimmed = current.trim();
-      if (trimmed) statements.push(trimmed);
-      current = '';
-    }
-    i++;
-  }
-  const last = current.trim();
-  if (last) statements.push(last);
-  return statements;
-}
-
-// Ejecuta un archivo SQL completo en Supabase vía el pool de PostgreSQL
-async function runSqlFile(filePath) {
-  if (!fs.existsSync(filePath)) {
-    throw new Error(`No se encontró el archivo SQL: ${filePath}`);
-  }
-  if (!DATABASE_URL) {
-    throw new Error('No hay DATABASE_URL (ni SUPABASE_URL con DB_PASSWORD) configurado en .env.');
-  }
-  const sql = fs.readFileSync(filePath, 'utf8');
-  const statements = splitSql(sql);
-  const client = await pool.connect();
-  const executed = [];
-  try {
-    for (const stmt of statements) {
-      await client.query(stmt);
-      executed.push(stmt.slice(0, 60));
-    }
-  } finally {
-    client.release();
-  }
-  return executed;
-}
-
-// Ejecuta el esquema (tablas, triggers, RLS)
-async function runSchema() {
-  console.log('📐 Creando esquema en Supabase...');
-  const res = await runSqlFile(SCHEMA_SQL);
-  console.log(`   ${res.length} sentencias ejecutadas.`);
-  return res;
-}
-
-// Inserta los datos de ejemplo
-async function runSeed() {
-  console.log('🌱 Insertando datos de ejemplo...');
-  const res = await runSqlFile(SEED_SQL);
-  console.log(`   ${res.length} sentencias ejecutadas.`);
-  return res;
-}
-
-// Crea los usuarios por defecto (admin / artesano)
-async function runUsers() {
-  console.log('👤 Creando usuarios por defecto...');
-  const res = await runSqlFile(USERS_SQL);
-  console.log(`   ${res.length} sentencias ejecutadas.`);
-  return res;
-}
-
-// Helper: consulta SELECT simple devolviendo filas (usando supabase-js)
-async function select(table, columns = '*', orderBy = null) {
-  let query = (supabaseAdmin || supabase).from(table).select(columns);
-  if (orderBy) query = query.order(orderBy);
-  const { data, error } = await query;
+function unwrap({ data, error }) {
   if (error) throw new Error(error.message);
   return data;
 }
 
-module.exports = {
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY,
-  SUPABASE_SERVICE_KEY,
-  DATABASE_URL,
-  supabase,
-  supabaseAdmin,
-  pool,
-  initClients,
-  runSchema,
-  runSeed,
-  runUsers,
-  runSqlFile,
-  select,
-  SCHEMA_SQL,
-  SEED_SQL,
-  USERS_SQL,
+// Mensaje claro cuando RLS filtra la fila (no lanza error, devuelve 0 filas)
+function ensureRows(rows, action) {
+  if (!rows || rows.length === 0) {
+    throw new Error(`No se pudo ${action}: no tienes permisos o el registro no existe.`);
+  }
+  return rows[0];
+}
+
+// ------------------------------------------------------------
+//  CRUD genérico (reemplaza las rutas /api/* de Express)
+// ------------------------------------------------------------
+const db = {
+  // SELECT * FROM table [filtros] ORDER BY ...
+  async list(table, orders = [], build) {
+    let q = sbClient.from(table).select('*');
+    if (build) q = build(q);
+    for (const [col, ascending = true] of orders) q = q.order(col, { ascending });
+    return unwrap(await q);
+  },
+
+  // SELECT * FROM table WHERE id = $1
+  async get(table, id) {
+    return unwrap(await sbClient.from(table).select('*').eq('id', id).maybeSingle());
+  },
+
+  // INSERT ... RETURNING *
+  async insert(table, row) {
+    return ensureRows(unwrap(await sbClient.from(table).insert(row).select()), 'crear el registro');
+  },
+
+  // UPDATE ... WHERE id = $n RETURNING *
+  async update(table, id, patch) {
+    return ensureRows(unwrap(await sbClient.from(table).update(patch).eq('id', id).select()), 'actualizar el registro');
+  },
+
+  // DELETE ... WHERE id = $1
+  async remove(table, id) {
+    return ensureRows(unwrap(await sbClient.from(table).delete().eq('id', id).select()), 'eliminar el registro');
+  },
 };
+
+// ------------------------------------------------------------
+//  Consultas de lectura (mismo orden que tenía server.js)
+// ------------------------------------------------------------
+const api = {
+  announcements: () => db.list('announcements', [['is_urgent', false], ['published_at', false]]),
+  programInfo: () => db.list('program_info', [['id']]),
+  requirements: () => db.list('requirements', [['category'], ['sort_order']]),
+  artisans: () => db.list('artisans', [['name']], (q) => q.eq('is_active', true)),
+  alumni: () => db.list('alumni', [['year', false]]),
+  gallery: () => db.list('gallery', [['id', false]]),
+  craftFair: async () => (await db.list('craft_fair', [['id', false]], (q) => q.limit(1)))[0] || {},
+  artisanNotices: () => db.list('artisan_notices', [['is_urgent', false], ['published_at', false]]),
+  documents: () => db.list('documents', [['id', false]]),
+  activities: () => db.list('activities', [['activity_date']]),
+};
+
+// ------------------------------------------------------------
+//  Storage (reemplaza multer + uploadToSupabaseStorage)
+// ------------------------------------------------------------
+const MAX_SIZE = { photos: 5 * 1024 * 1024, documents: 10 * 1024 * 1024 };
+
+async function uploadFile(file, bucket = 'photos') {
+  if (!file) throw new Error('Archivo requerido');
+  const limit = MAX_SIZE[bucket];
+  if (limit && file.size > limit) {
+    throw new Error(`El archivo supera el límite de ${Math.round(limit / 1024 / 1024)} MB`);
+  }
+  const dot = (file.name || '').lastIndexOf('.');
+  const ext = dot >= 0 ? file.name.slice(dot).toLowerCase() : '';
+  const fileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+
+  const { error } = await sbClient.storage.from(bucket).upload(fileName, file, {
+    contentType: file.type || undefined,
+    upsert: false,
+  });
+  if (error) throw new Error('No se pudo subir el archivo: ' + error.message);
+
+  return sbClient.storage.from(bucket).getPublicUrl(fileName).data.publicUrl;
+}
+
+// ------------------------------------------------------------
+//  Autenticación (reemplaza /api/login, /api/me, JWT y bcrypt)
+// ------------------------------------------------------------
+function usernameToEmail(username) {
+  const u = String(username || '').trim().toLowerCase();
+  return u.includes('@') ? u : `${u}@${AUTH_EMAIL_DOMAIN}`;
+}
+
+async function loadProfile(user) {
+  if (!user) return null;
+  const { data, error } = await sbClient
+    .from('profiles')
+    .select('username, role')
+    .eq('id', user.id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return {
+    id: user.id,
+    email: user.email,
+    username: data?.username || user.email?.split('@')[0],
+    role: data?.role || null, // sin perfil => sin permisos
+  };
+}
+
+// Inicia sesión y devuelve { id, email, username, role }
+async function signIn(username, password) {
+  if (!username || !password) throw new Error('Faltan credenciales');
+  const { data, error } = await sbClient.auth.signInWithPassword({
+    email: usernameToEmail(username),
+    password,
+  });
+  if (error) {
+    throw new Error(/invalid login credentials/i.test(error.message)
+      ? 'Usuario o contraseña incorrectos'
+      : error.message);
+  }
+  return loadProfile(data.user);
+}
+
+async function signOut() {
+  await sbClient.auth.signOut();
+}
+
+// Equivalente a GET /api/me: valida la sesión contra Supabase
+async function getCurrentUser() {
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (!session) return null;
+  const { data, error } = await sbClient.auth.getUser();
+  if (error || !data.user) return null;
+  return loadProfile(data.user);
+}

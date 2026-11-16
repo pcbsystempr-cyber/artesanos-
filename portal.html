@@ -6,7 +6,6 @@
   <title>Portal de Artesanos | Programa Escolar</title>
   <meta name="robots" content="noindex" />
   <link rel="stylesheet" href="portal.css" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <!-- LOGIN -->
@@ -69,6 +68,10 @@
   </div>
 
   <div id="toast-container"></div>
+  <!-- Scripts normales (no módulos): el sitio funciona también abriendo el HTML con doble clic -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="env.js"></script>
+  <script src="supabase/supabaseClient.js"></script>
   <script src="portal.js"></script>
 </body>
 </html>

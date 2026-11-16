@@ -1,18 +1,19 @@
 -- ============================================================
---  Programa Escolar de Artesanos - Esquema de Base de Datos
---  Compatible con PostgreSQL (puede adaptarse a MySQL fácilmente)
+--  Programa Escolar de Artesanos - Esquema de Base de Datos (Supabase)
+--  Orden de ejecución en el SQL Editor de Supabase:
+--    1. schema.sql    (este archivo: tablas)
+--    2. policies.sql  (RLS, roles, Storage)
+--    3. seed.sql      (datos de ejemplo, opcional)
+--    4. users.sql     (asignar roles a usuarios de Supabase Auth)
 -- ============================================================
 
--- Crear la base de datos (ejecutar como superusuario si es necesario):
--- CREATE DATABASE artesanos;
-
 -- ============================================================
---  TABLA: users  (administradores y artesanos)
+--  TABLA: profiles  (rol de cada usuario de Supabase Auth)
+--  Sustituye a la antigua tabla "users" (bcrypt + JWT propio).
 -- ============================================================
-CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(60) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
+CREATE TABLE IF NOT EXISTS profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    username VARCHAR(60) UNIQUE,
     role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'artisan')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -31,7 +32,6 @@ CREATE TABLE IF NOT EXISTS announcements (
 
 -- ============================================================
 --  TABLA: program_info  (Información del programa)
---  Se guarda como filas tipo "clave/valor" para editar fácilmente
 -- ============================================================
 CREATE TABLE IF NOT EXISTS program_info (
     id SERIAL PRIMARY KEY,
@@ -62,6 +62,8 @@ CREATE TABLE IF NOT EXISTS artisans (
     specialty VARCHAR(120) NOT NULL,
     description TEXT,
     photo VARCHAR(255) DEFAULT '',
+    instagram VARCHAR(255) DEFAULT '',
+    facebook VARCHAR(255) DEFAULT '',
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -75,6 +77,8 @@ CREATE TABLE IF NOT EXISTS alumni (
     year INT NOT NULL,
     description TEXT,
     photo VARCHAR(255) DEFAULT '',
+    instagram VARCHAR(255) DEFAULT '',
+    facebook VARCHAR(255) DEFAULT '',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -135,3 +139,28 @@ CREATE TABLE IF NOT EXISTS activities (
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ============================================================
+--  Columnas añadidas después (para bases ya existentes)
+-- ============================================================
+ALTER TABLE artisans ADD COLUMN IF NOT EXISTS instagram VARCHAR(255) DEFAULT '';
+ALTER TABLE artisans ADD COLUMN IF NOT EXISTS facebook  VARCHAR(255) DEFAULT '';
+ALTER TABLE alumni   ADD COLUMN IF NOT EXISTS instagram VARCHAR(255) DEFAULT '';
+ALTER TABLE alumni   ADD COLUMN IF NOT EXISTS facebook  VARCHAR(255) DEFAULT '';
+
+-- updated_at automático (antes lo hacía server.js con NOW())
+CREATE OR REPLACE FUNCTION public.touch_updated_at() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+  NEW.updated_at := NOW();
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_program_info_updated ON program_info;
+CREATE TRIGGER trg_program_info_updated BEFORE UPDATE ON program_info
+  FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+
+DROP TRIGGER IF EXISTS trg_craft_fair_updated ON craft_fair;
+CREATE TRIGGER trg_craft_fair_updated BEFORE UPDATE ON craft_fair
+  FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();

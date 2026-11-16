@@ -1,17 +1,15 @@
 // ============================================================
-//  Portal de Artesanos - Lógica (protegido por sesión)
+//  Portal de Artesanos - Lógica (protegido por Supabase Auth)
+//  RLS: solo usuarios con rol 'artisan' o 'admin' pueden leer
+//  craft_fair, artisan_notices, documents y activities.
 // ============================================================
-
-const API = (url, opts) => fetch(url, {
-  ...opts,
-  headers: { 'Content-Type': 'application/json', ...(opts?.headers || {}) },
-}).then((r) => {
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-  return r.json();
-});
+// Script clásico (no módulo) para que funcione abriendo el HTML con doble clic.
+// Usa db / api / uploadFile / signIn / signOut / getCurrentUser de supabase/supabaseClient.js.
+(() => {
+'use strict';
 
 const $ = (s) => document.querySelector(s);
-let token = localStorage.getItem('artisanToken');
+const PORTAL_ROLES = ['artisan', 'admin'];
 
 function toast(msg, type = 'info') {
   const el = document.createElement('div');
@@ -21,40 +19,26 @@ function toast(msg, type = 'info') {
   setTimeout(() => el.remove(), 3000);
 }
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
-function authHeader() { return { headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' } }; }
 
 // ---------- Login ----------
 $('#loginForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   try {
-    const username = $('#username').value;
-    const password = $('#password').value;
-    console.log('Intentando login con usuario:', username);
-    const res = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-    });
-    console.log('Login response status:', res.status);
-    const data = await res.json().catch(() => ({}));
-    console.log('Login response data:', data);
-    if (res.ok && data.token) {
-      token = data.token;
-      localStorage.setItem('artisanToken', token);
-      console.log('Login exitoso, token guardado');
+    const user = await signIn($('#username').value.trim(), $('#password').value);
+    if (PORTAL_ROLES.includes(user?.role)) {
       showPortal();
     } else {
-      console.warn('Login fallido:', data.error || 'Sin token');
-      toast(data.error || 'Acceso denegado', 'error');
+      await signOut();
+      toast('Acceso denegado: tu usuario no tiene acceso al portal', 'error');
     }
   } catch (err) {
     console.error('Error en login:', err);
-    toast('No se pudo conectar con el servidor / base de datos.', 'error');
+    toast(err.message || 'No se pudo conectar con Supabase.', 'error');
   }
 });
 
-$('#logoutBtn')?.addEventListener('click', () => {
-  token = null; localStorage.removeItem('artisanToken');
+$('#logoutBtn')?.addEventListener('click', async () => {
+  await signOut();
   $('#portalView').classList.add('hidden');
   $('#loginView').classList.remove('hidden');
 });
@@ -73,21 +57,19 @@ $('#themeToggle')?.addEventListener('click', () => {
 });
 
 function showPortal() {
-  console.log('Mostrando portal...');
   if (localStorage.getItem('ptheme') === 'dark') { document.documentElement.setAttribute('data-theme', 'dark'); $('#themeToggle').textContent = '☀️'; }
   $('#loginView').classList.add('hidden');
   $('#portalView').classList.remove('hidden');
-  console.log('Portal visible, cargando datos...');
   loadFair(); loadNotices(); loadDocuments(); loadCalendar();
 }
 
 // ---------- Cargar Feria ----------
 async function loadFair() {
   try {
-    const f = await API('/api/craft-fair');
+    const f = await api.craftFair();
     $('#fairContent').innerHTML = `
       <h3 class="fair-title">${esc(f.title || 'Por confirmar')}</h3>
-      <p><strong>📅 Fecha:</strong> ${f.event_date || '—'}</p>
+      <p><strong>📅 Fecha:</strong> ${esc(f.event_date || '—')}</p>
       <p><strong>🕒 Hora:</strong> ${esc(f.event_time || '—')}</p>
       <p><strong>📍 Lugar:</strong> ${esc(f.location || '—')}</p>
       <p style="margin-top:0.6rem;">${esc(f.description || '')}</p>
@@ -101,12 +83,12 @@ async function loadFair() {
 // ---------- Cargar Avisos ----------
 async function loadNotices() {
   try {
-    const data = await API('/api/artisan-notices');
+    const data = await api.artisanNotices();
     $('#notices').innerHTML = data.map((n) => `
       <div class="notice ${n.is_urgent ? 'urgent' : ''}">
         <strong>${esc(n.title)} ${n.is_urgent ? '⚠️' : ''}</strong>
         <p>${esc(n.body)}</p>
-        <span class="date">📅 ${n.published_at || ''}</span>
+        <span class="date">📅 ${esc(n.published_at || '')}</span>
       </div>`).join('') || '<p>No hay avisos.</p>';
   } catch (err) {
     console.error('Error cargando avisos:', err);
@@ -115,10 +97,18 @@ async function loadNotices() {
 }
 
 // ---------- Cargar Documentos ----------
+// Los documentos subidos guardan la URL pública de Storage; los de
+// ejemplo antiguos guardaban solo el nombre (se sirven desde /uploads).
+function docUrl(filename) {
+  const f = String(filename || '');
+  if (!f || /^https?:\/\//i.test(f) || f.startsWith('/') || f.startsWith('uploads/')) return f;
+  return 'uploads/' + f;
+}
+
 async function loadDocuments() {
   try {
-    const data = await API('/api/documents');
-    $('#documents').innerHTML = data.map((d) => `<li><button class="doc-item-btn" data-url="${esc(d.filename)}" data-title="${esc(d.title)}">📄 ${esc(d.title)}</button></li>`).join('') || '<li>No hay documentos.</li>';
+    const data = await api.documents();
+    $('#documents').innerHTML = data.map((d) => `<li><button class="doc-item-btn" data-url="${esc(docUrl(d.filename))}" data-title="${esc(d.title)}">📄 ${esc(d.title)}</button></li>`).join('') || '<li>No hay documentos.</li>';
     document.querySelectorAll('.doc-item-btn').forEach((btn) => {
       btn.addEventListener('click', () => openDocViewer(btn.dataset.url, btn.dataset.title));
     });
@@ -149,10 +139,10 @@ $('#docViewer')?.addEventListener('click', (e) => { if (e.target === $('#docView
 // ---------- Cargar Calendario ----------
 async function loadCalendar() {
   try {
-    const data = await API('/api/activities');
+    const data = await api.activities();
     $('#calendar').innerHTML = data.map((a) => `
       <div class="cal-item">
-        <div class="date">📅 ${a.activity_date || ''}</div>
+        <div class="date">📅 ${esc(a.activity_date || '')}</div>
         <strong>${esc(a.title)}</strong>
         <p class="cal-desc">${esc(a.description || '')}</p>
       </div>`).join('') || '<p>Sin actividades programadas.</p>';
@@ -162,13 +152,14 @@ async function loadCalendar() {
   }
 }
 
-// ---------- Init ----------
-if (token) {
-  fetch('/api/me', { ...authHeader() }).then(async (r) => {
-    const data = await r.json().catch(() => ({}));
-    if (r.ok && data.user) showPortal();
-    else { localStorage.removeItem('artisanToken'); $('#loginView').classList.remove('hidden'); }
-  }).catch(() => { $('#loginView').classList.remove('hidden'); });
-} else {
+// ---------- Init: reemplaza GET /api/me ----------
+(async () => {
+  try {
+    const user = await getCurrentUser();
+    if (PORTAL_ROLES.includes(user?.role)) return showPortal();
+  } catch (err) {
+    console.error('Error verificando sesión:', err);
+  }
   $('#loginView').classList.remove('hidden');
-}
+})();
+})();
